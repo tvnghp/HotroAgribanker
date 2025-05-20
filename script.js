@@ -310,27 +310,87 @@ function handleFileSelect(event) {
 // Hàm xử lý ảnh và thực hiện OCR
 function processImageForOCR(imageDataUrl) {
     console.log('Processing image for OCR...');
-    // TODO: Tích hợp thư viện OCR ở đây
-    // Ví dụ với Tesseract.js:
-    Tesseract.recognize(
-        imageDataUrl,
-        'vie', // Ngôn ngữ tiếng Việt
-        {
-            logger: m => console.log(m) // Theo dõi tiến trình
+    
+    // Tạo một canvas để xử lý ảnh trước khi OCR
+    const img = new Image();
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Tính toán kích thước phù hợp
+        let width = img.width;
+        let height = img.height;
+        
+        // Giới hạn kích thước tối đa để tránh vấn đề về bộ nhớ
+        const MAX_SIZE = 2048;
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+                height = Math.round((height * MAX_SIZE) / width);
+                width = MAX_SIZE;
+            } else {
+                width = Math.round((width * MAX_SIZE) / height);
+                height = MAX_SIZE;
+            }
         }
-    ).then(({ data: { text } }) => {
-        console.log('Văn bản nhận dạng được:', text);
-        // Điền văn bản vào ô tìm kiếm
-        document.getElementById('searchInput').value = text.trim();
-        showNotification('Đã nhận dạng văn bản từ ảnh');
         
-        // Tự động gọi tìm kiếm sau khi nhận dạng thành công
-        searchExcelData(text.trim());
+        canvas.width = width;
+        canvas.height = height;
         
-    }).catch(err => {
-        console.error('Lỗi OCR:', err);
-        showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
-    });
+        // Vẽ ảnh với các tùy chọn để tăng chất lượng
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Áp dụng một số xử lý để tăng độ chính xác của OCR
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        
+        // Tăng độ tương phản
+        for (let i = 0; i < data.length; i += 4) {
+            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            const threshold = 128;
+            
+            if (avg > threshold) {
+                data[i] = data[i + 1] = data[i + 2] = 255; // Trắng
+            } else {
+                data[i] = data[i + 1] = data[i + 2] = 0; // Đen
+            }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Chuyển đổi canvas thành Data URL với chất lượng cao
+        const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
+        
+        // Thực hiện OCR với ảnh đã xử lý
+        Tesseract.recognize(
+            processedImageDataUrl,
+            'vie',
+            {
+                logger: m => console.log(m),
+                tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
+                tessedit_pageseg_mode: '6', // Giả định là một khối văn bản đồng nhất
+                preserve_interword_spaces: '1'
+            }
+        ).then(({ data: { text } }) => {
+            console.log('Văn bản nhận dạng được:', text);
+            // Điền văn bản vào ô tìm kiếm
+            document.getElementById('searchInput').value = text.trim();
+            showNotification('Đã nhận dạng văn bản từ ảnh');
+            
+            // Tự động gọi tìm kiếm sau khi nhận dạng thành công
+            searchExcelData(text.trim());
+            
+        }).catch(err => {
+            console.error('Lỗi OCR:', err);
+            showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
+        });
+    };
+    
+    img.onerror = function() {
+        console.error('Lỗi khi tải ảnh');
+        showNotification('Không thể tải ảnh để xử lý.', 'error');
+    };
+    
+    img.src = imageDataUrl;
 }
 
 // Xử lý việc chọn file ảnh để OCR
