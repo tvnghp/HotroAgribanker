@@ -297,6 +297,64 @@ function handleFileSelect(event) {
     reader.readAsArrayBuffer(file);
 }
 
+// Hàm xử lý ảnh và thực hiện OCR
+function processImageForOCR(imageDataUrl) {
+    console.log('Processing image for OCR...');
+    // TODO: Tích hợp thư viện OCR ở đây
+    // Ví dụ với Tesseract.js:
+    Tesseract.recognize(
+        imageDataUrl,
+        'vie', // Ngôn ngữ tiếng Việt
+        {
+            logger: m => console.log(m) // Theo dõi tiến trình
+        }
+    ).then(({ data: { text } }) => {
+        console.log('Văn bản nhận dạng được:', text);
+        // Điền văn bản vào ô tìm kiếm
+        document.getElementById('searchInput').value = text.trim();
+        showNotification('Đã nhận dạng văn bản từ ảnh');
+        
+        // Tự động gọi tìm kiếm sau khi nhận dạng thành công
+        searchExcelData(text.trim());
+        
+    }).catch(err => {
+        console.error('Lỗi OCR:', err);
+        showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
+    });
+}
+
+// Xử lý việc chọn file ảnh để OCR
+function handleImageSelect(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        document.getElementById('imageName').textContent = 'Chưa có ảnh';
+        return;
+    }
+    
+    // Cập nhật tên file ảnh được chọn
+    document.getElementById('imageName').textContent = file.name;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const imageDataUrl = e.target.result; // Dữ liệu ảnh dưới dạng base64 Data URL
+        console.log('Đã đọc file ảnh:', file.name);
+        
+        // Gọi hàm xử lý OCR chung
+        processImageForOCR(imageDataUrl);
+
+        // showNotification('Đã chọn ảnh. Cần tích hợp thư viện OCR để xử lý.'); // Thông báo tạm thời
+    };
+    
+    reader.onerror = function() {
+        console.error('Lỗi khi đọc file ảnh');
+        showNotification('Không thể đọc file ảnh. Vui lòng thử lại.', 'error');
+    };
+    
+    reader.readAsDataURL(file); // Đọc ảnh dưới dạng Data URL
+}
+
 // Tải file Excel mặc định khi trang web được tải
 function loadDefaultExcelFile() {
     try {
@@ -330,9 +388,51 @@ function loadDefaultExcelFile() {
     }
 }
 
+// Hàm xử lý sự kiện paste
+function handlePaste(event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    let blob = null;
+
+    for (const item of items) {
+        // Tìm kiếm item có kiểu là image
+        if (item.type.indexOf('image') === 0) {
+            blob = item.getAsFile();
+            break;
+        }
+    }
+
+    if (blob) {
+        console.log('Đã dán ảnh từ clipboard');
+        showNotification('Đã phát hiện ảnh từ clipboard. Đang xử lý...');
+        
+        // Đọc blob ảnh dưới dạng Data URL
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imageDataUrl = e.target.result;
+            // Gọi hàm xử lý OCR chung
+            processImageForOCR(imageDataUrl);
+        };
+        reader.onerror = function() {
+            console.error('Lỗi khi đọc blob ảnh từ clipboard');
+            showNotification('Không thể đọc ảnh từ clipboard.', 'error');
+        };
+        reader.readAsDataURL(blob);
+    } else {
+        console.log('Không có ảnh trong clipboard');
+        // Tùy chọn: hiển thị thông báo hoặc không làm gì cả nếu không có ảnh
+        // showNotification('Nội dung dán không phải là ảnh.', 'info');
+    }
+}
+
 window.onload = () => {
-    // Đăng ký sự kiện cho nút chọn file
+    // Đăng ký sự kiện cho nút chọn file Excel
     document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+    
+    // Đăng ký sự kiện cho nút chọn file ảnh
+    document.getElementById('imageInput').addEventListener('change', handleImageSelect);
+    
+    // Thêm trình lắng nghe sự kiện paste
+    document.body.addEventListener('paste', handlePaste);
     
     // Tải file Excel mặc định
     loadDefaultExcelFile();
