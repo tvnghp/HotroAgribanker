@@ -309,16 +309,18 @@ function handleFileSelect(event) {
 
 // Hàm xử lý ảnh và thực hiện OCR
 async function processImageForOCR(imageDataUrl, isPreview = false) {
-    console.log('Processing image for OCR...');
+    console.log(`processImageForOCR called (isPreview: ${isPreview})`);
     if (!isPreview) {
         showNotification('Đang nhận dạng văn bản từ ảnh...');
+    } else {
+         console.log('Preprocessing image for preview...');
     }
 
     return new Promise((resolve, reject) => {
         const img = new Image();
         
         img.onload = function() {
-            console.log('Original image loaded for processing');
+            console.log('Original image loaded for processing/preview');
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
@@ -426,18 +428,21 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
             
             // Lấy Data URL của ảnh đã xử lý
             const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
+            console.log('Image preprocessing complete. Processed Data URL obtained', processedImageDataUrl.substring(0, 50) + '...');
 
             if (isPreview) {
                 // Nếu chỉ xem trước, trả về Data URL của ảnh đã xử lý
+                console.log('Returning processed image data URL for preview');
                 resolve(processedImageDataUrl);
             } else {
                 // Nếu thực hiện OCR, gọi Tesseract.recognize với ảnh đã xử lý
+                console.log('Starting Tesseract recognition...');
                 Tesseract.recognize(
                     processedImageDataUrl,
                     'vie',
                     {
                         logger: m => console.log(m),
-                        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
+                        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
                         tessedit_pageseg_mode: '6', // Page segmentation mode: Assume a single uniform block of text.
                         preserve_interword_spaces: '1',
                         tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
@@ -449,7 +454,7 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
                         tessjs_create_osd: '0'
                     }
                 ).then(({ data }) => {
-                    console.log('Dữ liệu nhận dạng được:', data);
+                    console.log('Tesseract recognition complete. Data:', data);
                     
                     let recognizedText = '';
                     if (data && data.text) {
@@ -461,7 +466,7 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
                     resolve(recognizedText); // Trả về văn bản
                     
                 }).catch(err => {
-                    console.error('Lỗi OCR:', err);
+                    console.error('Lỗi OCR Tesseract:', err);
                     showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
                     reject(err);
                 });
@@ -469,12 +474,13 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
         };
         
         img.onerror = function() {
-            console.error('Lỗi khi tải ảnh');
-            showNotification('Không thể tải ảnh để xử lý.', 'error');
-            reject(new Error('Could not load image'));
+            console.error('Lỗi khi tải ảnh gốc cho processImageForOCR');
+            showNotification('Không thể tải ảnh gốc để xử lý.', 'error');
+            reject(new Error('Could not load original image'));
         };
         
         // Bắt đầu tải ảnh gốc
+        console.log('Loading original image into Image object...');
         img.src = imageDataUrl;
     });
 }
@@ -943,7 +949,11 @@ function handleTouchEnd() {
 
 // Hàm cắt ảnh theo vùng đã chọn
 async function cropImage() {
-    if (!selectionOverlay || !currentImage) return;
+    console.log('cropImage function called');
+    if (!selectionOverlay || !currentImage) {
+        console.log('No selection overlay or current image found');
+        return;
+    }
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -951,42 +961,68 @@ async function cropImage() {
     const rect = selectionOverlay.getBoundingClientRect();
     const imageRect = currentImage.getBoundingClientRect();
     
-    // Tính toán tỷ lệ giữa ảnh gốc và ảnh hiển thị
+    // Tính toán tỷ lệ giữa ảnh gốc và ảnh hiển thị trong modal
+    // currentImage.naturalWidth/Height là kích thước ảnh sau tiền xử lý hiển thị trong modal
+    // imageRect.width/height là kích thước DOM element của ảnh trong modal
     const scaleX = currentImage.naturalWidth / imageRect.width;
     const scaleY = currentImage.naturalHeight / imageRect.height;
     
-    // Tính toán vị trí và kích thước thực tế của vùng cắt
+    // Tính toán vị trí và kích thước thực tế của vùng cắt trên ảnh đã tiền xử lý
     const cropX = (rect.left - imageRect.left) * scaleX;
     const cropY = (rect.top - imageRect.top) * scaleY;
     const cropWidth = rect.width * scaleX;
     const cropHeight = rect.height * scaleY;
+
+    console.log(`Crop coordinates and size: x=${cropX}, y=${cropY}, width=${cropWidth}, height=${cropHeight}`);
     
+    // Kiểm tra kích thước cắt hợp lệ
+    if (cropWidth <= 0 || cropHeight <= 0) {
+        console.log('Invalid crop size');
+        showNotification('Vùng chọn không hợp lệ.', 'warning');
+        return;
+    }
+
     canvas.width = cropWidth;
     canvas.height = cropHeight;
     
-    // Vẽ phần ảnh đã cắt
+    // Vẽ phần ảnh đã cắt từ ảnh đã tiền xử lý lên canvas mới
     ctx.drawImage(
-        currentImage,
+        currentImage, // Sử dụng ảnh đã tiền xử lý đang hiển thị trong modal
         cropX, cropY, cropWidth, cropHeight,
         0, 0, cropWidth, cropHeight
     );
     
     // Chuyển đổi canvas thành Data URL
     const croppedImageDataUrl = canvas.toDataURL('image/jpeg');
+    console.log('Cropped image Data URL obtained', croppedImageDataUrl.substring(0, 50) + '...');
     
     // Đóng modal
     document.getElementById('imageCropModal').style.display = 'none';
+    console.log('Image crop modal closed');
     
-    // Xử lý ảnh đã cắt
+    // Xử lý ảnh đã cắt (thực hiện OCR)
     try {
+        console.log('Calling processImageForOCR with cropped image');
         const recognizedText = await processImageForOCR(croppedImageDataUrl);
+        console.log('processImageForOCR resolved. Recognized text:', recognizedText);
+        
         // Thay thế các ký tự xuống dòng bằng khoảng trắng và trim
         const cleanedText = recognizedText.replace(/[\r\n]+/g, ' ').trim();
+        console.log('Cleaned text:', cleanedText);
+        
         // Điền văn bản đã xử lý vào ô tìm kiếm
-        document.getElementById('searchInput').value = cleanedText;
-        showNotification('Đã nhận dạng và điền văn bản vào ô tìm kiếm');
-        // Tự động gọi tìm kiếm sau khi nhận dạng thành công
-        searchExcelData(cleanedText);
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = cleanedText;
+            console.log('Search input value set:', searchInput.value);
+            showNotification('Đã nhận dạng và điền văn bản vào ô tìm kiếm');
+            // Tự động gọi tìm kiếm sau khi nhận dạng thành công
+            searchExcelData(cleanedText);
+            console.log('searchExcelData called');
+        } else {
+            console.error('Search input element not found!');
+            showNotification('Lỗi: Không tìm thấy ô tìm kiếm.', 'error');
+        }
         
     } catch (error) {
         console.error('Lỗi xử lý ảnh cắt:', error);
