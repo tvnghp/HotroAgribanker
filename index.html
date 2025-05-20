@@ -28,9 +28,11 @@
                 </div>
         
                 <div id="capture-selection" style="margin-left: 10px;">
-                    <input type="file" id="captureInput" accept="image/*" capture="user">
-                    <label for="captureInput">Chụp Ảnh</label>
-                    <span id="captureName">Chưa chụp</span>
+                    <div class="input-group">
+                        <label for="captureInput" class="input-label">Chụp ảnh:</label>
+                        <input type="file" id="captureInput" accept="image/*" capture="environment" class="file-input">
+                        <span id="captureName" class="file-name">Chưa chụp</span>
+                    </div>
                 </div>
         
                 <div id="controls">
