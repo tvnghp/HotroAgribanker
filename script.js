@@ -311,7 +311,6 @@ function handleFileSelect(event) {
 function processImageForOCR(imageDataUrl) {
     console.log('Processing image for OCR...');
     
-    // Tạo một canvas để xử lý ảnh trước khi OCR
     const img = new Image();
     img.onload = function() {
         const canvas = document.createElement('canvas');
@@ -321,7 +320,7 @@ function processImageForOCR(imageDataUrl) {
         let width = img.width;
         let height = img.height;
         
-        // Giới hạn kích thước tối đa để tránh vấn đề về bộ nhớ
+        // Giới hạn kích thước tối đa
         const MAX_SIZE = 2048;
         if (width > MAX_SIZE || height > MAX_SIZE) {
             if (width > height) {
@@ -339,20 +338,25 @@ function processImageForOCR(imageDataUrl) {
         // Vẽ ảnh với các tùy chọn để tăng chất lượng
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Áp dụng một số xử lý để tăng độ chính xác của OCR
+        // Áp dụng các bộ lọc để cải thiện chất lượng ảnh
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
         
-        // Tăng độ tương phản
+        // Tăng độ tương phản và làm sắc nét
         for (let i = 0; i < data.length; i += 4) {
+            // Chuyển đổi sang grayscale
             const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            const threshold = 128;
             
-            if (avg > threshold) {
-                data[i] = data[i + 1] = data[i + 2] = 255; // Trắng
-            } else {
-                data[i] = data[i + 1] = data[i + 2] = 0; // Đen
-            }
+            // Tăng độ tương phản
+            const contrast = 1.5;
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            const newValue = factor * (avg - 128) + 128;
+            
+            // Áp dụng ngưỡng để làm rõ văn bản
+            const threshold = 128;
+            const finalValue = newValue > threshold ? 255 : 0;
+            
+            data[i] = data[i + 1] = data[i + 2] = finalValue;
         }
         
         ctx.putImageData(imageData, 0, 0);
@@ -367,8 +371,15 @@ function processImageForOCR(imageDataUrl) {
             {
                 logger: m => console.log(m),
                 tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
-                tessedit_pageseg_mode: '6', // Giả định là một khối văn bản đồng nhất
-                preserve_interword_spaces: '1'
+                tessedit_pageseg_mode: '6',
+                preserve_interword_spaces: '1',
+                tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
+                tessjs_create_pdf: '0',
+                tessjs_create_hocr: '0',
+                tessjs_create_tsv: '0',
+                tessjs_create_box: '0',
+                tessjs_create_unlv: '0',
+                tessjs_create_osd: '0'
             }
         ).then(({ data: { text } }) => {
             console.log('Văn bản nhận dạng được:', text);
@@ -437,7 +448,8 @@ function handleCaptureSelect(event) {
 
     reader.onload = function(e) {
         const imageDataUrl = e.target.result;
-        showImageCropModal(imageDataUrl);
+        // Xử lý ảnh chụp trước khi hiển thị modal
+        preprocessCapturedImage(imageDataUrl);
     };
 
     reader.onerror = function() {
@@ -448,73 +460,71 @@ function handleCaptureSelect(event) {
     reader.readAsDataURL(file);
 }
 
-// Tải file Excel mặc định khi trang web được tải
-function loadDefaultExcelFile() {
-    try {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'data.xlsx', true);
-        xhr.responseType = 'arraybuffer';
-
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                const data = new Uint8Array(xhr.response);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                excelData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-                console.log('Đã tải dữ liệu Excel mặc định:', excelData.length, 'dòng');
-                document.getElementById('fileName').textContent = 'data.xlsx';
-                showNotification(`Đã tải thành công file mặc định với ${excelData.length} dòng dữ liệu.`);
-            } else {
-                console.warn('Không thể tải file Excel mặc định:', xhr.status);
-                showNotification('Không tìm thấy file mặc định. Vui lòng chọn file Excel.', 'warning');
-            }
-        };
-
-        xhr.onerror = function() {
-            console.warn('Lỗi khi tải file Excel mặc định');
-            showNotification('Không tìm thấy file mặc định. Vui lòng chọn file Excel.', 'warning');
-        };
-
-        xhr.send();
-    } catch (error) {
-        console.warn('Lỗi khi tải file Excel mặc định:', error);
-    }
-}
-
-// Hàm xử lý sự kiện paste
-function handlePaste(event) {
-    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-    let blob = null;
-
-    for (const item of items) {
-        // Tìm kiếm item có kiểu là image
-        if (item.type.indexOf('image') === 0) {
-            blob = item.getAsFile();
-            break;
-        }
-    }
-
-    if (blob) {
-        console.log('Đã dán ảnh từ clipboard');
-        showNotification('Đã phát hiện ảnh từ clipboard. Đang xử lý...');
+// Hàm tiền xử lý ảnh chụp
+function preprocessCapturedImage(imageDataUrl) {
+    const img = new Image();
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         
-        // Đọc blob ảnh dưới dạng Data URL
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const imageDataUrl = e.target.result;
-            // Gọi hàm xử lý OCR chung
-            processImageForOCR(imageDataUrl);
-        };
-        reader.onerror = function() {
-            console.error('Lỗi khi đọc blob ảnh từ clipboard');
-            showNotification('Không thể đọc ảnh từ clipboard.', 'error');
-        };
-        reader.readAsDataURL(blob);
-    } else {
-        console.log('Không có ảnh trong clipboard');
-        // Tùy chọn: hiển thị thông báo hoặc không làm gì cả nếu không có ảnh
-        // showNotification('Nội dung dán không phải là ảnh.', 'info');
-    }
+        // Tính toán kích thước phù hợp
+        let width = img.width;
+        let height = img.height;
+        
+        // Giới hạn kích thước tối đa
+        const MAX_SIZE = 2048;
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+                height = Math.round((height * MAX_SIZE) / width);
+                width = MAX_SIZE;
+            } else {
+                width = Math.round((width * MAX_SIZE) / height);
+                height = MAX_SIZE;
+            }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Vẽ ảnh với các tùy chọn để tăng chất lượng
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Áp dụng các bộ lọc để cải thiện chất lượng ảnh
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        
+        // Tăng độ tương phản và làm sắc nét
+        for (let i = 0; i < data.length; i += 4) {
+            // Chuyển đổi sang grayscale
+            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            
+            // Tăng độ tương phản
+            const contrast = 1.5;
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            const newValue = factor * (avg - 128) + 128;
+            
+            // Áp dụng ngưỡng để làm rõ văn bản
+            const threshold = 128;
+            const finalValue = newValue > threshold ? 255 : 0;
+            
+            data[i] = data[i + 1] = data[i + 2] = finalValue;
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Chuyển đổi canvas thành Data URL với chất lượng cao
+        const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
+        
+        // Hiển thị modal với ảnh đã xử lý
+        showImageCropModal(processedImageDataUrl);
+    };
+    
+    img.onerror = function() {
+        console.error('Lỗi khi xử lý ảnh chụp');
+        showNotification('Không thể xử lý ảnh chụp. Vui lòng thử lại.', 'error');
+    };
+    
+    img.src = imageDataUrl;
 }
 
 // Hàm hiển thị modal chọn vùng ảnh
