@@ -1,6 +1,12 @@
 let excelData = [];
 let recognition;
 
+// Biến toàn cục cho việc chọn vùng ảnh
+let isSelecting = false;
+let startX, startY;
+let selectionOverlay = null;
+let currentImage = null;
+
 // Khởi tạo đối tượng nhận diện giọng nói
 function initSpeechRecognition() {
     // Tạo đối tượng nhận diện giọng nói nếu hỗ trợ
@@ -364,18 +370,14 @@ function handleCaptureSelect(event) {
         return;
     }
 
-    // Cập nhật tên file (thường là tên tạm hoặc không có tên) và trạng thái
-    document.getElementById('captureName').textContent = 'Đã chụp ảnh'; // Hoặc file.name nếu có
-    showNotification('Đã chụp ảnh. Đang xử lý...');
+    document.getElementById('captureName').textContent = 'Đã chụp ảnh';
+    showNotification('Đã chụp ảnh. Vui lòng chọn vùng cần xử lý...');
 
     const reader = new FileReader();
 
     reader.onload = function(e) {
-        const imageDataUrl = e.target.result; // Dữ liệu ảnh dưới dạng base64 Data URL
-        console.log('Đã đọc ảnh chụp.');
-
-        // Gọi hàm xử lý OCR chung
-        processImageForOCR(imageDataUrl);
+        const imageDataUrl = e.target.result;
+        showImageCropModal(imageDataUrl);
     };
 
     reader.onerror = function() {
@@ -383,7 +385,7 @@ function handleCaptureSelect(event) {
         showNotification('Không thể đọc ảnh chụp. Vui lòng thử lại.', 'error');
     };
 
-    reader.readAsDataURL(file); // Đọc ảnh dưới dạng Data URL
+    reader.readAsDataURL(file);
 }
 
 // Tải file Excel mặc định khi trang web được tải
@@ -455,6 +457,118 @@ function handlePaste(event) {
     }
 }
 
+// Hàm hiển thị modal chọn vùng ảnh
+function showImageCropModal(imageDataUrl) {
+    const modal = document.getElementById('imageCropModal');
+    const cropImage = document.getElementById('cropImage');
+    
+    cropImage.src = imageDataUrl;
+    currentImage = cropImage;
+    modal.style.display = 'block';
+    
+    // Xóa vùng chọn cũ nếu có
+    if (selectionOverlay) {
+        selectionOverlay.remove();
+        selectionOverlay = null;
+    }
+    
+    // Thêm sự kiện cho việc chọn vùng
+    cropImage.onload = function() {
+        const container = document.querySelector('.image-container');
+        container.addEventListener('mousedown', startSelection);
+        container.addEventListener('mousemove', updateSelection);
+        container.addEventListener('mouseup', endSelection);
+    };
+}
+
+// Hàm bắt đầu chọn vùng
+function startSelection(e) {
+    if (e.target !== currentImage) return;
+    
+    isSelecting = true;
+    const rect = currentImage.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    
+    // Tạo overlay mới
+    selectionOverlay = document.createElement('div');
+    selectionOverlay.className = 'selection-overlay';
+    selectionOverlay.style.left = startX + 'px';
+    selectionOverlay.style.top = startY + 'px';
+    
+    // Thêm các handle để resize
+    const handles = ['nw', 'ne', 'sw', 'se'];
+    handles.forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `selection-handle ${pos}`;
+        selectionOverlay.appendChild(handle);
+    });
+    
+    document.querySelector('.image-container').appendChild(selectionOverlay);
+}
+
+// Hàm cập nhật vùng chọn
+function updateSelection(e) {
+    if (!isSelecting || !selectionOverlay) return;
+    
+    const rect = currentImage.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+    
+    selectionOverlay.style.width = width + 'px';
+    selectionOverlay.style.height = height + 'px';
+    selectionOverlay.style.left = Math.min(startX, currentX) + 'px';
+    selectionOverlay.style.top = Math.min(startY, currentY) + 'px';
+}
+
+// Hàm kết thúc chọn vùng
+function endSelection() {
+    isSelecting = false;
+}
+
+// Hàm cắt ảnh theo vùng đã chọn
+function cropImage() {
+    if (!selectionOverlay || !currentImage) return;
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    const rect = selectionOverlay.getBoundingClientRect();
+    const imageRect = currentImage.getBoundingClientRect();
+    
+    // Tính toán tỷ lệ giữa ảnh gốc và ảnh hiển thị
+    const scaleX = currentImage.naturalWidth / imageRect.width;
+    const scaleY = currentImage.naturalHeight / imageRect.height;
+    
+    // Tính toán vị trí và kích thước thực tế của vùng cắt
+    const cropX = (rect.left - imageRect.left) * scaleX;
+    const cropY = (rect.top - imageRect.top) * scaleY;
+    const cropWidth = rect.width * scaleX;
+    const cropHeight = rect.height * scaleY;
+    
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
+    
+    // Vẽ phần ảnh đã cắt
+    ctx.drawImage(
+        currentImage,
+        cropX, cropY, cropWidth, cropHeight,
+        0, 0, cropWidth, cropHeight
+    );
+    
+    // Chuyển đổi canvas thành Data URL
+    const croppedImageDataUrl = canvas.toDataURL('image/jpeg');
+    
+    // Đóng modal
+    document.getElementById('imageCropModal').style.display = 'none';
+    
+    // Xử lý ảnh đã cắt
+    processImageForOCR(croppedImageDataUrl);
+}
+
 window.onload = () => {
     // Đăng ký sự kiện cho nút chọn file Excel
     document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -493,6 +607,25 @@ window.onload = () => {
             searchExcelData(searchTerm); // Gọi hàm tìm kiếm
         }
     });
+    
+    // Thêm event listeners cho modal
+    document.querySelector('.close').onclick = function() {
+        document.getElementById('imageCropModal').style.display = 'none';
+    };
+    
+    document.getElementById('cropButton').onclick = cropImage;
+    
+    document.getElementById('cancelCropButton').onclick = function() {
+        document.getElementById('imageCropModal').style.display = 'none';
+    };
+    
+    // Đóng modal khi click bên ngoài
+    window.onclick = function(event) {
+        const modal = document.getElementById('imageCropModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    };
 };
 
 function displayResults(data) {

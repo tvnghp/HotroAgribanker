@@ -473,3 +473,110 @@ button:hover {
     border-radius: 3px !important;
     font-weight: bold !important;
 }
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 800px;
+    border-radius: var(--border-radius-lg);
+    position: relative;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: var(--primary);
+}
+
+.image-container {
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    position: relative;
+    margin: 20px 0;
+    background-color: #f5f5f5;
+    border-radius: var(--border-radius-md);
+}
+
+#cropImage {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.crop-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.crop-controls button {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition-default);
+}
+
+#cropButton {
+    background-color: var(--primary);
+    color: white;
+}
+
+#cropButton:hover {
+    background-color: var(--primary-dark);
+}
+
+#cancelCropButton {
+    background-color: #e0e0e0;
+    color: var(--text-dark);
+}
+
+#cancelCropButton:hover {
+    background-color: #d0d0d0;
+}
+
+/* Selection overlay */
+.selection-overlay {
+    position: absolute;
+    border: 2px solid var(--primary);
+    background-color: rgba(138, 21, 56, 0.2);
+    cursor: move;
+}
+
+.selection-handle {
+    width: 10px;
+    height: 10px;
+    background-color: white;
+    border: 2px solid var(--primary);
+    position: absolute;
+}
+
+.selection-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+.selection-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+.selection-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.selection-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
