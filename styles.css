@@ -483,130 +483,154 @@ button:hover {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.7);
+    background-color: rgba(0, 0, 0, 0.9);
+    overflow: hidden;
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 5% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 800px;
-    border-radius: var(--border-radius-lg);
     position: relative;
+    background-color: #fefefe;
+    margin: 0;
+    padding: 20px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 }
 
 .close {
+    position: absolute;
+    right: 20px;
+    top: 10px;
     color: #aaa;
-    float: right;
     font-size: 28px;
     font-weight: bold;
+    z-index: 1001;
     cursor: pointer;
 }
 
 .close:hover {
-    color: var(--primary);
+    color: #000;
 }
 
 .image-container {
-    width: 100%;
-    height: 400px;
-    overflow: hidden;
+    flex: 1;
     position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000;
     margin: 20px 0;
-    background-color: #f5f5f5;
-    border-radius: var(--border-radius-md);
 }
 
 #cropImage {
     max-width: 100%;
     max-height: 100%;
-    display: block;
-    margin: 0 auto;
+    object-fit: contain;
 }
 
 .crop-controls {
     display: flex;
     justify-content: center;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-md);
+    gap: 20px;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-top: 1px solid #ddd;
 }
 
-.crop-controls button {
-    padding: var(--spacing-sm) var(--spacing-lg);
+#cropButton, #cancelCropButton {
+    padding: 12px 30px;
+    font-size: 16px;
     border: none;
-    border-radius: var(--border-radius-lg);
+    border-radius: 5px;
     cursor: pointer;
-    font-weight: 600;
-    transition: var(--transition-default);
+    transition: background-color 0.3s;
 }
 
 #cropButton {
-    background-color: var(--primary);
+    background-color: #8A1538;
     color: white;
 }
 
 #cropButton:hover {
-    background-color: var(--primary-dark);
+    background-color: #6d102c;
 }
 
 #cancelCropButton {
-    background-color: #e0e0e0;
-    color: var(--text-dark);
+    background-color: #6c757d;
+    color: white;
 }
 
 #cancelCropButton:hover {
-    background-color: #d0d0d0;
+    background-color: #5a6268;
 }
 
-/* Selection overlay */
+/* Selection overlay styles */
 .selection-overlay {
     position: absolute;
-    border: 2px solid var(--primary);
-    background-color: rgba(138, 21, 56, 0.2);
+    border: 2px solid #8A1538;
+    background-color: rgba(138, 21, 56, 0.1);
     cursor: move;
-    touch-action: none; /* Ngăn chặn các thao tác touch mặc định */
 }
 
 .selection-handle {
-    width: 20px; /* Tăng kích thước cho dễ chạm */
-    height: 20px;
-    background-color: white;
-    border: 2px solid var(--primary);
     position: absolute;
-    touch-action: none; /* Ngăn chặn các thao tác touch mặc định */
+    width: 20px;
+    height: 20px;
+    background-color: #8A1538;
+    border: 2px solid white;
+    border-radius: 50%;
 }
 
-.selection-handle.nw { top: -10px; left: -10px; cursor: nw-resize; }
-.selection-handle.ne { top: -10px; right: -10px; cursor: ne-resize; }
-.selection-handle.sw { bottom: -10px; left: -10px; cursor: sw-resize; }
-.selection-handle.se { bottom: -10px; right: -10px; cursor: se-resize; }
+.selection-handle.nw {
+    top: -10px;
+    left: -10px;
+    cursor: nw-resize;
+}
+
+.selection-handle.ne {
+    top: -10px;
+    right: -10px;
+    cursor: ne-resize;
+}
+
+.selection-handle.sw {
+    bottom: -10px;
+    left: -10px;
+    cursor: sw-resize;
+}
+
+.selection-handle.se {
+    bottom: -10px;
+    right: -10px;
+    cursor: se-resize;
+}
 
 /* Mobile styles */
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
     .modal-content {
-        width: 95%;
-        margin: 10% auto;
-        padding: 15px;
+        padding: 10px;
     }
-    
+
+    .close {
+        right: 15px;
+        top: 5px;
+        font-size: 24px;
+    }
+
     .image-container {
-        height: 300px;
+        margin: 10px 0;
     }
-    
-    .crop-controls button {
-        padding: 12px 24px; /* Tăng kích thước nút cho dễ chạm */
-        font-size: 16px;
+
+    #cropButton, #cancelCropButton {
+        padding: 15px 40px;
+        font-size: 18px;
     }
-    
+
     .selection-handle {
-        width: 24px; /* Tăng kích thước handle cho mobile */
-        height: 24px;
+        width: 30px;
+        height: 30px;
     }
-    
-    .selection-handle.nw { top: -12px; left: -12px; }
-    .selection-handle.ne { top: -12px; right: -12px; }
-    .selection-handle.sw { bottom: -12px; left: -12px; }
-    .selection-handle.se { bottom: -12px; right: -12px; }
 }
