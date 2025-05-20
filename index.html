@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Bảng mã chuyển tiền liên ngân hàng</title>
+</head>
+<body>
+    <div id="header-container">
+        <div id="agribank-logo-container">
+            <img id="agribank-logo" src="./Agribank.png" alt="Agribank Logo" />
+        </div>
+        <div id="header-text">
+            <h1>NGÂN HÀNG NÔNG NGHIỆP VÀ PHÁT TRIỂN NÔNG THÔN</h1>
+            <h2>CHI NHÁNH CẦN THƠ II</h2>
+            <div id="controls-container">
+                <div id="file-selection">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls">
+                    <label for="fileInput">Chọn File</label>
+                    <span id="fileName">data.xlsx</span>
+                </div>
+        
+                <div id="controls">
+                    <button id="startListeningButton">Bắt Đầu Nói</button>
+                    <button id="searchButton">Tìm Kiếm</button>
+                    <button id="clearResultsButton">Xóa Kết Quả</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   
+
+    <input type="text" id="searchInput" placeholder="Tìm kiếm...">
+   
+
+    <div id="resultArea"></div>
+    
+    <footer id="footer">
+        <p>&copy; 2024 Agribank Chi nhánh Cần Thơ II. Bộ phận điện toán.</p>
+        <p>Liên hệ: Nguyễn Thành Trung; Cellphone: 0947.86.86.82; Email: trungnguyenthanh1@agribank.com.vn</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
