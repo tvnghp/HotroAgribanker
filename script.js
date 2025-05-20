@@ -878,6 +878,16 @@ window.onload = () => {
     // Thêm trình lắng nghe sự kiện paste
     document.body.addEventListener('paste', handlePaste);
     
+    // Thêm xử lý paste cho ô tìm kiếm
+    document.getElementById('searchInput').addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        // Thay thế tất cả các ký tự xuống dòng (\n, \r\n) bằng khoảng trắng
+        const cleanedText = pastedText.replace(/[\r\n]+/g, ' ').trim();
+        // Chèn văn bản đã xử lý vào ô tìm kiếm
+        this.value = cleanedText;
+    });
+    
     // Đăng ký sự kiện cho nút chụp ảnh
     document.getElementById('captureInput').addEventListener('change', handleCaptureSelect);
     
