@@ -355,6 +355,37 @@ function handleImageSelect(event) {
     reader.readAsDataURL(file); // Đọc ảnh dưới dạng Data URL
 }
 
+// Hàm xử lý ảnh được chụp trực tiếp
+function handleCaptureSelect(event) {
+    const file = event.target.files[0];
+
+    if (!file) {
+        document.getElementById('captureName').textContent = 'Chưa chụp';
+        return;
+    }
+
+    // Cập nhật tên file (thường là tên tạm hoặc không có tên) và trạng thái
+    document.getElementById('captureName').textContent = 'Đã chụp ảnh'; // Hoặc file.name nếu có
+    showNotification('Đã chụp ảnh. Đang xử lý...');
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const imageDataUrl = e.target.result; // Dữ liệu ảnh dưới dạng base64 Data URL
+        console.log('Đã đọc ảnh chụp.');
+
+        // Gọi hàm xử lý OCR chung
+        processImageForOCR(imageDataUrl);
+    };
+
+    reader.onerror = function() {
+        console.error('Lỗi khi đọc ảnh chụp');
+        showNotification('Không thể đọc ảnh chụp. Vui lòng thử lại.', 'error');
+    };
+
+    reader.readAsDataURL(file); // Đọc ảnh dưới dạng Data URL
+}
+
 // Tải file Excel mặc định khi trang web được tải
 function loadDefaultExcelFile() {
     try {
@@ -433,6 +464,9 @@ window.onload = () => {
     
     // Thêm trình lắng nghe sự kiện paste
     document.body.addEventListener('paste', handlePaste);
+    
+    // Đăng ký sự kiện cho nút chụp ảnh
+    document.getElementById('captureInput').addEventListener('change', handleCaptureSelect);
     
     // Tải file Excel mặc định
     loadDefaultExcelFile();
