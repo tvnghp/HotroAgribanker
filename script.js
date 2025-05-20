@@ -342,27 +342,49 @@ async function processImageForOCR(imageDataUrl) {
             // Vẽ ảnh gốc lên canvas
             ctx.drawImage(img, 0, 0, width, height);
             
-            // Áp dụng các bộ lọc để cải thiện chất lượng ảnh
+            // Lấy dữ liệu pixel
             const imageData = ctx.getImageData(0, 0, width, height);
             const data = imageData.data;
             
-            // Tăng độ tương phản và làm sắc nét
+            // Áp dụng tiền xử lý ảnh
             for (let i = 0; i < data.length; i += 4) {
                 // Chuyển đổi sang grayscale
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                
-                // Tăng độ tương phản
-                const contrast = 1.5;
-                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-                const newValue = factor * (avg - 128) + 128;
-                
-                // Áp dụng ngưỡng để làm rõ văn bản
-                const threshold = 128;
-                const finalValue = newValue > threshold ? 255 : 0;
-                
-                data[i] = data[i + 1] = data[i + 2] = finalValue;
+                const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+                data[i] = data[i + 1] = data[i + 2] = gray;
             }
             
+            // Áp dụng Thresholding thích ứng (Adaptive Thresholding - một dạng đơn giản)
+            const windowSize = 10; // Kích thước cửa sổ cho ngưỡng thích ứng
+            const c = 5; // Hằng số trừ đi từ ngưỡng
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    let sum = 0;
+                    let count = 0;
+
+                    // Tính tổng giá trị xám trong cửa sổ
+                    for (let wy = Math.max(0, y - windowSize); wy < Math.min(height, y + windowSize + 1); wy++) {
+                        for (let wx = Math.max(0, x - windowSize); wx < Math.min(width, x + windowSize + 1); wx++) {
+                            const wi = (wy * width + wx) * 4;
+                            sum += data[wi];
+                            count++;
+                        }
+                    }
+
+                    // Tính ngưỡng thích ứng và áp dụng
+                    const threshold = (sum / count) - c;
+                    const grayValue = data[i];
+
+                    if (grayValue > threshold) {
+                        data[i] = data[i + 1] = data[i + 2] = 255; // White
+                    } else {
+                        data[i] = data[i + 1] = data[i + 2] = 0; // Black
+                    }
+                }
+            }
+
+            // Cập nhật lại dữ liệu pixel lên canvas
             ctx.putImageData(imageData, 0, 0);
             
             // Chuyển đổi canvas thành Data URL với chất lượng cao
