@@ -364,7 +364,8 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
             const grayData = grayImageData.data;
             
             // 2. Áp dụng làm mờ Gaussian nhẹ để giảm nhiễu
-            const blurRadius = 1; // Điều chỉnh bán kính làm mờ nếu cần
+            // Tăng nhẹ bán kính làm mờ
+            const blurRadius = 2; 
             const blurredData = new Uint8ClampedArray(grayData.length);
 
             for (let y = 0; y < height; y++) {
@@ -375,7 +376,7 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
 
                     for (let wy = Math.max(0, y - blurRadius); wy < Math.min(height, y + blurRadius + 1); wy++) {
                         for (let wx = Math.max(0, x - blurRadius); wx < Math.min(width, x + blurRadius + 1); wx++) {
-                            const wi = (wy * width + wx) * 4;
+                             const wi = (wy * width + wx) * 4;
                             sum += grayData[wi];
                             count++;
                         }
@@ -391,8 +392,9 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
             const blurredDataForThresholding = blurredImageData.data;
 
             // 3. Áp dụng Thresholding thích ứng
-            const windowSize = 15; // Kích thước cửa sổ cho ngưỡng thích ứng (có thể tăng nhẹ)
-            const c = 2; // Hằng số trừ đi từ ngưỡng (có thể giảm nhẹ)
+            // Điều chỉnh kích thước cửa sổ và hằng số C
+            const windowSize = 25; // Tăng kích thước cửa sổ
+            const c = 5; // Tăng hằng số C
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
@@ -443,7 +445,8 @@ async function processImageForOCR(imageDataUrl, isPreview = false) {
                     {
                         logger: m => console.log(m),
                         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
-                        tessedit_pageseg_mode: '6', // Page segmentation mode: Assume a single uniform block of text.
+                        // Thay đổi chế độ phân đoạn trang sang tự động hoàn toàn
+                        tessedit_pageseg_mode: '3', 
                         preserve_interword_spaces: '1',
                         tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
                         tessjs_create_pdf: '0',
