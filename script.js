@@ -308,9 +308,11 @@ function handleFileSelect(event) {
 }
 
 // Hàm xử lý ảnh và thực hiện OCR
-async function processImageForOCR(imageDataUrl) {
+async function processImageForOCR(imageDataUrl, isPreview = false) {
     console.log('Processing image for OCR...');
-    showNotification('Đang nhận dạng văn bản từ ảnh...');
+    if (!isPreview) {
+        showNotification('Đang nhận dạng văn bản từ ảnh...');
+    }
 
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -422,43 +424,48 @@ async function processImageForOCR(imageDataUrl) {
             
             // --- Kết thúc tiền xử lý ---
             
-            // Chuyển đổi canvas thành Data URL với chất lượng cao
+            // Lấy Data URL của ảnh đã xử lý
             const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
-            
-            // Thực hiện OCR với ảnh đã xử lý
-            Tesseract.recognize(
-                processedImageDataUrl,
-                'vie',
-                {
-                    logger: m => console.log(m),
-                    tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
-                    tessedit_pageseg_mode: '6', // Page segmentation mode: Assume a single uniform block of text.
-                    preserve_interword_spaces: '1',
-                    tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
-                    tessjs_create_pdf: '0',
-                    tessjs_create_hocr: '0',
-                    tessjs_create_tsv: '0',
-                    tessjs_create_box: '0',
-                    tessjs_create_unlv: '0',
-                    tessjs_create_osd: '0'
-                }
-            ).then(({ data }) => {
-                console.log('Dữ liệu nhận dạng được:', data);
-                
-                let recognizedText = '';
-                if (data && data.text) {
-                    recognizedText = data.text.trim();
-                }
-                
-                console.log('Văn bản nhận dạng được (raw text):', recognizedText);
-                showNotification('Đã nhận dạng văn bản từ ảnh');
-                resolve(recognizedText); // Trả về văn bản
-                
-            }).catch(err => {
-                console.error('Lỗi OCR:', err);
-                showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
-                reject(err);
-            });
+
+            if (isPreview) {
+                // Nếu chỉ xem trước, trả về Data URL của ảnh đã xử lý
+                resolve(processedImageDataUrl);
+            } else {
+                // Nếu thực hiện OCR, gọi Tesseract.recognize với ảnh đã xử lý
+                Tesseract.recognize(
+                    processedImageDataUrl,
+                    'vie',
+                    {
+                        logger: m => console.log(m),
+                        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
+                        tessedit_pageseg_mode: '6', // Page segmentation mode: Assume a single uniform block of text.
+                        preserve_interword_spaces: '1',
+                        tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
+                        tessjs_create_pdf: '0',
+                        tessjs_create_hocr: '0',
+                        tessjs_create_tsv: '0',
+                        tessjs_create_box: '0',
+                        tessjs_create_unlv: '0',
+                        tessjs_create_osd: '0'
+                    }
+                ).then(({ data }) => {
+                    console.log('Dữ liệu nhận dạng được:', data);
+                    
+                    let recognizedText = '';
+                    if (data && data.text) {
+                        recognizedText = data.text.trim();
+                    }
+                    
+                    console.log('Văn bản nhận dạng được (raw text):', recognizedText);
+                    showNotification('Đã nhận dạng văn bản từ ảnh');
+                    resolve(recognizedText); // Trả về văn bản
+                    
+                }).catch(err => {
+                    console.error('Lỗi OCR:', err);
+                    showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
+                    reject(err);
+                });
+            }
         };
         
         img.onerror = function() {
@@ -559,7 +566,7 @@ async function handleImageSelect(event) {
 }
 
 // Hàm hiển thị modal chọn vùng ảnh
-function showImageCropModal(imageDataUrl) {
+async function showImageCropModal(imageDataUrl) {
     console.log('Bắt đầu hiển thị modal...');
     const modal = document.getElementById('imageCropModal');
     const cropImage = document.getElementById('cropImage');
@@ -569,53 +576,95 @@ function showImageCropModal(imageDataUrl) {
         return;
     }
     
-    // Đặt src cho ảnh
-    cropImage.src = imageDataUrl;
-    currentImage = cropImage;
-    
-    // Hiển thị modal
-    modal.style.display = 'block';
-    console.log('Modal đã được hiển thị');
-    
-    // Xóa vùng chọn cũ nếu có
-    if (selectionOverlay) {
-        selectionOverlay.remove();
-        selectionOverlay = null;
-    }
-    
-    // Thêm sự kiện cho việc chọn vùng
-    cropImage.onload = function() {
-        console.log('Ảnh đã được tải xong');
-        const container = document.querySelector('.image-container');
+    // Hiển thị thông báo xử lý
+    showNotification('Đang tiền xử lý ảnh...');
+
+    try {
+        // Xử lý ảnh và lấy Data URL của ảnh đã xử lý để hiển thị
+        const processedImageDataUrl = await processImageForOCR(imageDataUrl, true);
         
-        if (!container) {
-            console.error('Không tìm thấy image-container');
-            return;
+        // Đặt src cho ảnh trong modal là ảnh đã xử lý
+        cropImage.src = processedImageDataUrl;
+        currentImage = cropImage;
+        
+        // Hiển thị modal
+        modal.style.display = 'block';
+        console.log('Modal đã được hiển thị với ảnh đã xử lý');
+        
+        // Xóa vùng chọn cũ nếu có
+        if (selectionOverlay) {
+            selectionOverlay.remove();
+            selectionOverlay = null;
         }
         
-        // Xóa các event listener cũ
-        container.removeEventListener('mousedown', handleMouseDown);
-        container.removeEventListener('mousemove', handleMouseMove);
-        container.removeEventListener('mouseup', handleMouseUp);
-        container.removeEventListener('touchstart', handleTouchStart);
-        container.removeEventListener('touchmove', handleTouchMove);
-        container.removeEventListener('touchend', handleTouchEnd);
+        // Thêm sự kiện cho việc chọn vùng
+        // Đảm bảo ảnh đã tải xong trước khi thêm listeners
+        cropImage.onload = function() {
+            console.log('Processed image loaded in modal');
+            const container = document.querySelector('.image-container');
+            
+            if (!container) {
+                console.error('Không tìm thấy image-container');
+                return;
+            }
+            
+            // Xóa các event listener cũ
+            container.removeEventListener('mousedown', handleMouseDown);
+            container.removeEventListener('mousemove', handleMouseMove);
+            container.removeEventListener('mouseup', handleMouseUp);
+            container.removeEventListener('touchstart', handleTouchStart);
+            container.removeEventListener('touchmove', handleTouchMove);
+            container.removeEventListener('touchend', handleTouchEnd);
+            
+            // Thêm sự kiện mới
+            container.addEventListener('mousedown', handleMouseDown);
+            container.addEventListener('mousemove', handleMouseMove);
+            container.addEventListener('mouseup', handleMouseUp);
+            container.addEventListener('touchstart', handleTouchStart, { passive: false });
+            container.addEventListener('touchmove', handleTouchMove, { passive: false });
+            container.addEventListener('touchend', handleTouchEnd);
+            
+            console.log('Đã thêm các event listener cho container');
+            // Ẩn thông báo xử lý sau khi ảnh hiện lên
+            // showNotification('Sẵn sàng chọn vùng ảnh'); // Có thể thêm thông báo này
+        };
+
+         cropImage.onerror = function() {
+            console.error('Lỗi khi tải ảnh đã xử lý vào modal');
+            showNotification('Không thể tải ảnh đã xử lý. Vui lòng thử lại.', 'error');
+             // Đóng modal nếu ảnh không tải được
+            modal.style.display = 'none';
+        };
+
+         // Nếu ảnh đã được cache, onload có thể không chạy, kiểm tra trạng thái complete
+        if (cropImage.complete) {
+             console.log('Processed image already complete in modal');
+             // Gọi trực tiếp logic thêm event listeners nếu ảnh đã tải xong ngay lập tức
+             const container = document.querySelector('.image-container');
+             if (container) {
+                 container.removeEventListener('mousedown', handleMouseDown);
+                 container.removeEventListener('mousemove', handleMouseMove);
+                 container.removeEventListener('mouseup', handleMouseUp);
+                 container.removeEventListener('touchstart', handleTouchStart);
+                 container.removeEventListener('touchmove', handleTouchMove);
+                 container.removeEventListener('touchend', handleTouchEnd);
+                 
+                 container.addEventListener('mousedown', handleMouseDown);
+                 container.addEventListener('mousemove', handleMouseMove);
+                 container.addEventListener('mouseup', handleMouseUp);
+                 container.addEventListener('touchstart', handleTouchStart, { passive: false });
+                 container.addEventListener('touchmove', handleTouchMove, { passive: false });
+                 container.addEventListener('touchend', handleTouchEnd);
+                 console.log('Đã thêm các event listener cho container (ảnh cached)');
+             }
+        }
         
-        // Thêm sự kiện mới
-        container.addEventListener('mousedown', handleMouseDown);
-        container.addEventListener('mousemove', handleMouseMove);
-        container.addEventListener('mouseup', handleMouseUp);
-        container.addEventListener('touchstart', handleTouchStart, { passive: false });
-        container.addEventListener('touchmove', handleTouchMove, { passive: false });
-        container.addEventListener('touchend', handleTouchEnd);
-        
-        console.log('Đã thêm các event listener cho container');
-    };
-    
-    cropImage.onerror = function() {
-        console.error('Lỗi khi tải ảnh');
-        showNotification('Không thể tải ảnh. Vui lòng thử lại.', 'error');
-    };
+    } catch (error) {
+        console.error('Lỗi trong quá trình tiền xử lý ảnh để hiển thị modal:', error);
+        showNotification('Lỗi khi chuẩn bị ảnh để chọn vùng.', 'error');
+        // Đóng modal nếu có lỗi
+        modal.style.display = 'none';
+    }
 }
 
 // Hàm xử lý sự kiện mousedown
