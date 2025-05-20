@@ -343,19 +343,25 @@ async function processImageForOCR(imageDataUrl) {
             ctx.drawImage(img, 0, 0, width, height);
             
             // Lấy dữ liệu pixel
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
+            let imageData = ctx.getImageData(0, 0, width, height);
+            let data = imageData.data;
             
-            // Áp dụng tiền xử lý ảnh
+            // --- Áp dụng tiền xử lý ảnh ---
+
+            // 1. Chuyển đổi sang grayscale
             for (let i = 0; i < data.length; i += 4) {
-                // Chuyển đổi sang grayscale
                 const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
                 data[i] = data[i + 1] = data[i + 2] = gray;
             }
+
+            // Cập nhật dữ liệu grayscale lên canvas tạm thời để áp dụng bộ lọc
+            ctx.putImageData(imageData, 0, 0);
+            const grayImageData = ctx.getImageData(0, 0, width, height);
+            const grayData = grayImageData.data;
             
-            // Áp dụng Thresholding thích ứng (Adaptive Thresholding - một dạng đơn giản)
-            const windowSize = 10; // Kích thước cửa sổ cho ngưỡng thích ứng
-            const c = 5; // Hằng số trừ đi từ ngưỡng
+            // 2. Áp dụng làm mờ Gaussian nhẹ để giảm nhiễu
+            const blurRadius = 1; // Điều chỉnh bán kính làm mờ nếu cần
+            const blurredData = new Uint8ClampedArray(grayData.length);
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
@@ -363,18 +369,45 @@ async function processImageForOCR(imageDataUrl) {
                     let sum = 0;
                     let count = 0;
 
-                    // Tính tổng giá trị xám trong cửa sổ
+                    for (let wy = Math.max(0, y - blurRadius); wy < Math.min(height, y + blurRadius + 1); wy++) {
+                        for (let wx = Math.max(0, x - blurRadius); wx < Math.min(width, x + blurRadius + 1); wx++) {
+                            const wi = (wy * width + wx) * 4;
+                            sum += grayData[wi];
+                            count++;
+                        }
+                    }
+                    blurredData[i] = blurredData[i+1] = blurredData[i+2] = sum / count;
+                    blurredData[i+3] = 255; // Alpha channel
+                }
+            }
+            
+            // Cập nhật dữ liệu đã làm mờ lên canvas
+            ctx.putImageData(new ImageData(blurredData, width, height), 0, 0);
+            const blurredImageData = ctx.getImageData(0, 0, width, height);
+            const blurredDataForThresholding = blurredImageData.data;
+
+            // 3. Áp dụng Thresholding thích ứng
+            const windowSize = 15; // Kích thước cửa sổ cho ngưỡng thích ứng (có thể tăng nhẹ)
+            const c = 2; // Hằng số trừ đi từ ngưỡng (có thể giảm nhẹ)
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    let sum = 0;
+                    let count = 0;
+
+                    // Tính tổng giá trị xám trong cửa sổ từ ảnh đã làm mờ
                     for (let wy = Math.max(0, y - windowSize); wy < Math.min(height, y + windowSize + 1); wy++) {
                         for (let wx = Math.max(0, x - windowSize); wx < Math.min(width, x + windowSize + 1); wx++) {
                             const wi = (wy * width + wx) * 4;
-                            sum += data[wi];
+                            sum += blurredDataForThresholding[wi];
                             count++;
                         }
                     }
 
                     // Tính ngưỡng thích ứng và áp dụng
                     const threshold = (sum / count) - c;
-                    const grayValue = data[i];
+                    const grayValue = blurredDataForThresholding[i];
 
                     if (grayValue > threshold) {
                         data[i] = data[i + 1] = data[i + 2] = 255; // White
@@ -384,8 +417,10 @@ async function processImageForOCR(imageDataUrl) {
                 }
             }
 
-            // Cập nhật lại dữ liệu pixel lên canvas
+            // Cập nhật lại dữ liệu pixel nhị phân lên canvas
             ctx.putImageData(imageData, 0, 0);
+            
+            // --- Kết thúc tiền xử lý ---
             
             // Chuyển đổi canvas thành Data URL với chất lượng cao
             const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
