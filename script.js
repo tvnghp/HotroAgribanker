@@ -3,9 +3,13 @@ let recognition;
 
 // Biến toàn cục cho việc chọn vùng ảnh
 let isSelecting = false;
+let isMoving = false;
+let isResizing = false;
 let startX, startY;
 let selectionOverlay = null;
 let currentImage = null;
+let currentHandle = null;
+let originalX, originalY, originalWidth, originalHeight;
 
 // Khởi tạo đối tượng nhận diện giọng nói
 function initSpeechRecognition() {
@@ -340,17 +344,13 @@ function handleImageSelect(event) {
     
     // Cập nhật tên file ảnh được chọn
     document.getElementById('imageName').textContent = file.name;
+    showNotification('Đã chọn ảnh. Vui lòng chọn vùng cần xử lý...');
     
     const reader = new FileReader();
     
     reader.onload = function(e) {
-        const imageDataUrl = e.target.result; // Dữ liệu ảnh dưới dạng base64 Data URL
-        console.log('Đã đọc file ảnh:', file.name);
-        
-        // Gọi hàm xử lý OCR chung
-        processImageForOCR(imageDataUrl);
-
-        // showNotification('Đã chọn ảnh. Cần tích hợp thư viện OCR để xử lý.'); // Thông báo tạm thời
+        const imageDataUrl = e.target.result;
+        showImageCropModal(imageDataUrl);
     };
     
     reader.onerror = function() {
@@ -358,7 +358,7 @@ function handleImageSelect(event) {
         showNotification('Không thể đọc file ảnh. Vui lòng thử lại.', 'error');
     };
     
-    reader.readAsDataURL(file); // Đọc ảnh dưới dạng Data URL
+    reader.readAsDataURL(file);
 }
 
 // Hàm xử lý ảnh được chụp trực tiếp
@@ -475,20 +475,56 @@ function showImageCropModal(imageDataUrl) {
     // Thêm sự kiện cho việc chọn vùng
     cropImage.onload = function() {
         const container = document.querySelector('.image-container');
-        container.addEventListener('mousedown', startSelection);
-        container.addEventListener('mousemove', updateSelection);
-        container.addEventListener('mouseup', endSelection);
+        
+        // Thêm sự kiện cho cả mouse và touch
+        container.addEventListener('mousedown', handleMouseDown);
+        container.addEventListener('mousemove', handleMouseMove);
+        container.addEventListener('mouseup', handleMouseUp);
+        
+        // Thêm sự kiện touch
+        container.addEventListener('touchstart', handleTouchStart, { passive: false });
+        container.addEventListener('touchmove', handleTouchMove, { passive: false });
+        container.addEventListener('touchend', handleTouchEnd);
     };
 }
 
-// Hàm bắt đầu chọn vùng
-function startSelection(e) {
-    if (e.target !== currentImage) return;
+// Hàm xử lý sự kiện mousedown
+function handleMouseDown(e) {
+    const container = document.querySelector('.image-container');
+    const rect = container.getBoundingClientRect();
     
+    // Kiểm tra nếu click vào handle để resize
+    if (e.target.classList.contains('selection-handle')) {
+        isResizing = true;
+        currentHandle = e.target;
+        startX = e.clientX;
+        startY = e.clientY;
+        originalX = parseInt(selectionOverlay.style.left);
+        originalY = parseInt(selectionOverlay.style.top);
+        originalWidth = parseInt(selectionOverlay.style.width);
+        originalHeight = parseInt(selectionOverlay.style.height);
+        return;
+    }
+    
+    // Kiểm tra nếu click vào vùng chọn để di chuyển
+    if (e.target === selectionOverlay) {
+        isMoving = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        originalX = parseInt(selectionOverlay.style.left);
+        originalY = parseInt(selectionOverlay.style.top);
+        return;
+    }
+    
+    // Tạo vùng chọn mới
     isSelecting = true;
-    const rect = currentImage.getBoundingClientRect();
     startX = e.clientX - rect.left;
     startY = e.clientY - rect.top;
+    
+    // Xóa vùng chọn cũ nếu có
+    if (selectionOverlay) {
+        selectionOverlay.remove();
+    }
     
     // Tạo overlay mới
     selectionOverlay = document.createElement('div');
@@ -504,29 +540,220 @@ function startSelection(e) {
         selectionOverlay.appendChild(handle);
     });
     
-    document.querySelector('.image-container').appendChild(selectionOverlay);
+    container.appendChild(selectionOverlay);
 }
 
-// Hàm cập nhật vùng chọn
-function updateSelection(e) {
-    if (!isSelecting || !selectionOverlay) return;
+// Hàm xử lý sự kiện mousemove
+function handleMouseMove(e) {
+    const container = document.querySelector('.image-container');
+    const rect = container.getBoundingClientRect();
     
-    const rect = currentImage.getBoundingClientRect();
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
-    
-    const width = Math.abs(currentX - startX);
-    const height = Math.abs(currentY - startY);
-    
-    selectionOverlay.style.width = width + 'px';
-    selectionOverlay.style.height = height + 'px';
-    selectionOverlay.style.left = Math.min(startX, currentX) + 'px';
-    selectionOverlay.style.top = Math.min(startY, currentY) + 'px';
+    if (isSelecting) {
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+        
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+        
+        selectionOverlay.style.width = width + 'px';
+        selectionOverlay.style.height = height + 'px';
+        selectionOverlay.style.left = Math.min(startX, currentX) + 'px';
+        selectionOverlay.style.top = Math.min(startY, currentY) + 'px';
+    }
+    else if (isMoving) {
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        const newX = originalX + deltaX;
+        const newY = originalY + deltaY;
+        
+        // Giới hạn vùng chọn trong container
+        const maxX = rect.width - parseInt(selectionOverlay.style.width);
+        const maxY = rect.height - parseInt(selectionOverlay.style.height);
+        
+        selectionOverlay.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+        selectionOverlay.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+    }
+    else if (isResizing) {
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        switch(currentHandle.className) {
+            case 'selection-handle nw':
+                selectionOverlay.style.width = (originalWidth - deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight - deltaY) + 'px';
+                selectionOverlay.style.left = (originalX + deltaX) + 'px';
+                selectionOverlay.style.top = (originalY + deltaY) + 'px';
+                break;
+            case 'selection-handle ne':
+                selectionOverlay.style.width = (originalWidth + deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight - deltaY) + 'px';
+                selectionOverlay.style.top = (originalY + deltaY) + 'px';
+                break;
+            case 'selection-handle sw':
+                selectionOverlay.style.width = (originalWidth - deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight + deltaY) + 'px';
+                selectionOverlay.style.left = (originalX + deltaX) + 'px';
+                break;
+            case 'selection-handle se':
+                selectionOverlay.style.width = (originalWidth + deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight + deltaY) + 'px';
+                break;
+        }
+        
+        // Đảm bảo kích thước tối thiểu
+        const minSize = 20;
+        if (parseInt(selectionOverlay.style.width) < minSize) {
+            selectionOverlay.style.width = minSize + 'px';
+        }
+        if (parseInt(selectionOverlay.style.height) < minSize) {
+            selectionOverlay.style.height = minSize + 'px';
+        }
+    }
 }
 
-// Hàm kết thúc chọn vùng
-function endSelection() {
+// Hàm xử lý sự kiện mouseup
+function handleMouseUp() {
     isSelecting = false;
+    isMoving = false;
+    isResizing = false;
+    currentHandle = null;
+}
+
+// Hàm xử lý sự kiện touchstart
+function handleTouchStart(e) {
+    e.preventDefault(); // Ngăn chặn scroll khi touch
+    const touch = e.touches[0];
+    const container = document.querySelector('.image-container');
+    const rect = container.getBoundingClientRect();
+    
+    // Kiểm tra nếu touch vào handle để resize
+    if (e.target.classList.contains('selection-handle')) {
+        isResizing = true;
+        currentHandle = e.target;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        originalX = parseInt(selectionOverlay.style.left);
+        originalY = parseInt(selectionOverlay.style.top);
+        originalWidth = parseInt(selectionOverlay.style.width);
+        originalHeight = parseInt(selectionOverlay.style.height);
+        return;
+    }
+    
+    // Kiểm tra nếu touch vào vùng chọn để di chuyển
+    if (e.target === selectionOverlay) {
+        isMoving = true;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        originalX = parseInt(selectionOverlay.style.left);
+        originalY = parseInt(selectionOverlay.style.top);
+        return;
+    }
+    
+    // Tạo vùng chọn mới
+    isSelecting = true;
+    startX = touch.clientX - rect.left;
+    startY = touch.clientY - rect.top;
+    
+    // Xóa vùng chọn cũ nếu có
+    if (selectionOverlay) {
+        selectionOverlay.remove();
+    }
+    
+    // Tạo overlay mới
+    selectionOverlay = document.createElement('div');
+    selectionOverlay.className = 'selection-overlay';
+    selectionOverlay.style.left = startX + 'px';
+    selectionOverlay.style.top = startY + 'px';
+    
+    // Thêm các handle để resize
+    const handles = ['nw', 'ne', 'sw', 'se'];
+    handles.forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `selection-handle ${pos}`;
+        selectionOverlay.appendChild(handle);
+    });
+    
+    container.appendChild(selectionOverlay);
+}
+
+// Hàm xử lý sự kiện touchmove
+function handleTouchMove(e) {
+    e.preventDefault(); // Ngăn chặn scroll khi touch
+    const touch = e.touches[0];
+    const container = document.querySelector('.image-container');
+    const rect = container.getBoundingClientRect();
+    
+    if (isSelecting) {
+        const currentX = touch.clientX - rect.left;
+        const currentY = touch.clientY - rect.top;
+        
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+        
+        selectionOverlay.style.width = width + 'px';
+        selectionOverlay.style.height = height + 'px';
+        selectionOverlay.style.left = Math.min(startX, currentX) + 'px';
+        selectionOverlay.style.top = Math.min(startY, currentY) + 'px';
+    }
+    else if (isMoving) {
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        
+        const newX = originalX + deltaX;
+        const newY = originalY + deltaY;
+        
+        // Giới hạn vùng chọn trong container
+        const maxX = rect.width - parseInt(selectionOverlay.style.width);
+        const maxY = rect.height - parseInt(selectionOverlay.style.height);
+        
+        selectionOverlay.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+        selectionOverlay.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+    }
+    else if (isResizing) {
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        
+        switch(currentHandle.className) {
+            case 'selection-handle nw':
+                selectionOverlay.style.width = (originalWidth - deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight - deltaY) + 'px';
+                selectionOverlay.style.left = (originalX + deltaX) + 'px';
+                selectionOverlay.style.top = (originalY + deltaY) + 'px';
+                break;
+            case 'selection-handle ne':
+                selectionOverlay.style.width = (originalWidth + deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight - deltaY) + 'px';
+                selectionOverlay.style.top = (originalY + deltaY) + 'px';
+                break;
+            case 'selection-handle sw':
+                selectionOverlay.style.width = (originalWidth - deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight + deltaY) + 'px';
+                selectionOverlay.style.left = (originalX + deltaX) + 'px';
+                break;
+            case 'selection-handle se':
+                selectionOverlay.style.width = (originalWidth + deltaX) + 'px';
+                selectionOverlay.style.height = (originalHeight + deltaY) + 'px';
+                break;
+        }
+        
+        // Đảm bảo kích thước tối thiểu
+        const minSize = 20;
+        if (parseInt(selectionOverlay.style.width) < minSize) {
+            selectionOverlay.style.width = minSize + 'px';
+        }
+        if (parseInt(selectionOverlay.style.height) < minSize) {
+            selectionOverlay.style.height = minSize + 'px';
+        }
+    }
+}
+
+// Hàm xử lý sự kiện touchend
+function handleTouchEnd() {
+    isSelecting = false;
+    isMoving = false;
+    isResizing = false;
+    currentHandle = null;
 }
 
 // Hàm cắt ảnh theo vùng đã chọn

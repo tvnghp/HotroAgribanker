@@ -566,17 +566,47 @@ button:hover {
     border: 2px solid var(--primary);
     background-color: rgba(138, 21, 56, 0.2);
     cursor: move;
+    touch-action: none; /* Ngăn chặn các thao tác touch mặc định */
 }
 
 .selection-handle {
-    width: 10px;
-    height: 10px;
+    width: 20px; /* Tăng kích thước cho dễ chạm */
+    height: 20px;
     background-color: white;
     border: 2px solid var(--primary);
     position: absolute;
+    touch-action: none; /* Ngăn chặn các thao tác touch mặc định */
 }
 
-.selection-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
-.selection-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
-.selection-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
-.selection-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+.selection-handle.nw { top: -10px; left: -10px; cursor: nw-resize; }
+.selection-handle.ne { top: -10px; right: -10px; cursor: ne-resize; }
+.selection-handle.sw { bottom: -10px; left: -10px; cursor: sw-resize; }
+.selection-handle.se { bottom: -10px; right: -10px; cursor: se-resize; }
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        padding: 15px;
+    }
+    
+    .image-container {
+        height: 300px;
+    }
+    
+    .crop-controls button {
+        padding: 12px 24px; /* Tăng kích thước nút cho dễ chạm */
+        font-size: 16px;
+    }
+    
+    .selection-handle {
+        width: 24px; /* Tăng kích thước handle cho mobile */
+        height: 24px;
+    }
+    
+    .selection-handle.nw { top: -12px; left: -12px; }
+    .selection-handle.ne { top: -12px; right: -12px; }
+    .selection-handle.sw { bottom: -12px; left: -12px; }
+    .selection-handle.se { bottom: -12px; right: -12px; }
+}
