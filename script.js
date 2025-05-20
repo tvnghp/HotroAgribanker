@@ -404,8 +404,66 @@ function processImageForOCR(imageDataUrl) {
     img.src = imageDataUrl;
 }
 
-// Xử lý việc chọn file ảnh để OCR
+// Hàm kiểm tra trình duyệt
+function checkBrowser() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isChrome = /chrome/.test(userAgent);
+    const isAndroid = /android/.test(userAgent);
+    
+    // Chỉ cảnh báo khi là Chrome trên iOS
+    if (isIOS && isChrome && !isAndroid) {
+        showNotification('Vui lòng sử dụng Safari để có trải nghiệm tốt nhất. Chrome trên iOS có thể không hỗ trợ đầy đủ tính năng chụp ảnh.', 'warning');
+        return false;
+    }
+    return true;
+}
+
+// Hàm xử lý ảnh được chụp trực tiếp
+function handleCaptureSelect(event) {
+    console.log('Bắt đầu xử lý ảnh chụp...');
+    
+    // Kiểm tra trình duyệt trước khi xử lý
+    if (!checkBrowser()) {
+        document.getElementById('captureName').textContent = 'Chưa chụp';
+        return;
+    }
+    
+    const file = event.target.files[0];
+
+    if (!file) {
+        console.log('Không có file được chọn');
+        document.getElementById('captureName').textContent = 'Chưa chụp';
+        return;
+    }
+
+    document.getElementById('captureName').textContent = 'Đã chụp ảnh';
+    showNotification('Đã chụp ảnh. Vui lòng chọn vùng cần xử lý...');
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        console.log('Đã đọc xong file ảnh');
+        const imageDataUrl = e.target.result;
+        showImageCropModal(imageDataUrl);
+    };
+
+    reader.onerror = function() {
+        console.error('Lỗi khi đọc ảnh chụp');
+        showNotification('Không thể đọc ảnh chụp. Vui lòng thử lại.', 'error');
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// Hàm xử lý việc chọn file ảnh để OCR
 function handleImageSelect(event) {
+    // Kiểm tra trình duyệt trước khi xử lý
+    if (!checkBrowser()) {
+        document.getElementById('imageName').textContent = 'Chưa có ảnh';
+        return;
+    }
+    
     const file = event.target.files[0];
     
     if (!file) {
@@ -432,41 +490,24 @@ function handleImageSelect(event) {
     reader.readAsDataURL(file);
 }
 
-// Hàm xử lý ảnh được chụp trực tiếp
-function handleCaptureSelect(event) {
-    const file = event.target.files[0];
-
-    if (!file) {
-        document.getElementById('captureName').textContent = 'Chưa chụp';
-        return;
-    }
-
-    document.getElementById('captureName').textContent = 'Đã chụp ảnh';
-    showNotification('Đã chụp ảnh. Vui lòng chọn vùng cần xử lý...');
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        const imageDataUrl = e.target.result;
-        showImageCropModal(imageDataUrl);
-    };
-
-    reader.onerror = function() {
-        console.error('Lỗi khi đọc ảnh chụp');
-        showNotification('Không thể đọc ảnh chụp. Vui lòng thử lại.', 'error');
-    };
-
-    reader.readAsDataURL(file);
-}
-
 // Hàm hiển thị modal chọn vùng ảnh
 function showImageCropModal(imageDataUrl) {
+    console.log('Bắt đầu hiển thị modal...');
     const modal = document.getElementById('imageCropModal');
     const cropImage = document.getElementById('cropImage');
     
+    if (!modal || !cropImage) {
+        console.error('Không tìm thấy modal hoặc cropImage element');
+        return;
+    }
+    
+    // Đặt src cho ảnh
     cropImage.src = imageDataUrl;
     currentImage = cropImage;
+    
+    // Hiển thị modal
     modal.style.display = 'block';
+    console.log('Modal đã được hiển thị');
     
     // Xóa vùng chọn cũ nếu có
     if (selectionOverlay) {
@@ -476,17 +517,36 @@ function showImageCropModal(imageDataUrl) {
     
     // Thêm sự kiện cho việc chọn vùng
     cropImage.onload = function() {
+        console.log('Ảnh đã được tải xong');
         const container = document.querySelector('.image-container');
         
-        // Thêm sự kiện cho cả mouse và touch
+        if (!container) {
+            console.error('Không tìm thấy image-container');
+            return;
+        }
+        
+        // Xóa các event listener cũ
+        container.removeEventListener('mousedown', handleMouseDown);
+        container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseup', handleMouseUp);
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchmove', handleTouchMove);
+        container.removeEventListener('touchend', handleTouchEnd);
+        
+        // Thêm sự kiện mới
         container.addEventListener('mousedown', handleMouseDown);
         container.addEventListener('mousemove', handleMouseMove);
         container.addEventListener('mouseup', handleMouseUp);
-        
-        // Thêm sự kiện touch
         container.addEventListener('touchstart', handleTouchStart, { passive: false });
         container.addEventListener('touchmove', handleTouchMove, { passive: false });
         container.addEventListener('touchend', handleTouchEnd);
+        
+        console.log('Đã thêm các event listener cho container');
+    };
+    
+    cropImage.onerror = function() {
+        console.error('Lỗi khi tải ảnh');
+        showNotification('Không thể tải ảnh. Vui lòng thử lại.', 'error');
     };
 }
 
@@ -624,6 +684,7 @@ function handleMouseUp() {
 
 // Hàm xử lý sự kiện touchstart
 function handleTouchStart(e) {
+    console.log('Touch start event');
     e.preventDefault(); // Ngăn chặn scroll khi touch
     const touch = e.touches[0];
     const container = document.querySelector('.image-container');
@@ -631,6 +692,7 @@ function handleTouchStart(e) {
     
     // Kiểm tra nếu touch vào handle để resize
     if (e.target.classList.contains('selection-handle')) {
+        console.log('Touch vào handle để resize');
         isResizing = true;
         currentHandle = e.target;
         startX = touch.clientX;
@@ -644,6 +706,7 @@ function handleTouchStart(e) {
     
     // Kiểm tra nếu touch vào vùng chọn để di chuyển
     if (e.target === selectionOverlay) {
+        console.log('Touch vào vùng chọn để di chuyển');
         isMoving = true;
         startX = touch.clientX;
         startY = touch.clientY;
@@ -653,6 +716,7 @@ function handleTouchStart(e) {
     }
     
     // Tạo vùng chọn mới
+    console.log('Bắt đầu tạo vùng chọn mới');
     isSelecting = true;
     startX = touch.clientX - rect.left;
     startY = touch.clientY - rect.top;
@@ -660,6 +724,7 @@ function handleTouchStart(e) {
     // Xóa vùng chọn cũ nếu có
     if (selectionOverlay) {
         selectionOverlay.remove();
+        selectionOverlay = null;
     }
     
     // Tạo overlay mới
@@ -677,6 +742,7 @@ function handleTouchStart(e) {
     });
     
     container.appendChild(selectionOverlay);
+    console.log('Đã tạo xong vùng chọn mới');
 }
 
 // Hàm xử lý sự kiện touchmove
@@ -798,7 +864,11 @@ function cropImage() {
     processImageForOCR(croppedImageDataUrl);
 }
 
+// Thêm kiểm tra trình duyệt khi trang được tải
 window.onload = () => {
+    // Kiểm tra trình duyệt
+    checkBrowser();
+    
     // Đăng ký sự kiện cho nút chọn file Excel
     document.getElementById('fileInput').addEventListener('change', handleFileSelect);
     
@@ -825,15 +895,15 @@ window.onload = () => {
     // Gọi hàm tìm kiếm khi nhấn nút tìm kiếm
     document.getElementById('searchButton').onclick = () => {
         const searchTerm = document.getElementById('searchInput').value;
-        searchExcelData(searchTerm); // Gọi hàm tìm kiếm
+        searchExcelData(searchTerm);
     };
     
     // Tìm kiếm khi nhấn phím Enter
     document.getElementById('searchInput').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
-            event.preventDefault(); // Ngăn chặn hành động mặc định
+            event.preventDefault();
             const searchTerm = document.getElementById('searchInput').value;
-            searchExcelData(searchTerm); // Gọi hàm tìm kiếm
+            searchExcelData(searchTerm);
         }
     });
     
