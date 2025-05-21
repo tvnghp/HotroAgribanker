@@ -311,108 +311,131 @@ function handleFileSelect(event) {
 async function processImageForOCR(imageDataUrl) {
     console.log('Processing image for OCR...');
     showNotification('Đang nhận dạng văn bản từ ảnh...');
+    let text = '';
+    try {
+        text = await new Promise((resolve, reject) => {
+            const img = new Image();
 
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        
-        img.onload = function() {
-            console.log('Original image loaded for processing');
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Tính toán kích thước phù hợp
-            let width = img.width;
-            let height = img.height;
-            
-            // Giới hạn kích thước tối đa
-            const MAX_SIZE = 2048;
-            if (width > MAX_SIZE || height > MAX_SIZE) {
-                if (width > height) {
-                    height = Math.round((height * MAX_SIZE) / width);
-                    width = MAX_SIZE;
-                } else {
-                    width = Math.round((width * MAX_SIZE) / height);
-                    height = MAX_SIZE;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Giới hạn kích thước tối đa
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 2048;
+                if (width > MAX_SIZE || height > MAX_SIZE) {
+                    if (width > height) {
+                        height = Math.round((height * MAX_SIZE) / width);
+                        width = MAX_SIZE;
+                    } else {
+                        width = Math.round((width * MAX_SIZE) / height);
+                        height = MAX_SIZE;
+                    }
                 }
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            // Vẽ ảnh gốc lên canvas
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            // Áp dụng các bộ lọc để cải thiện chất lượng ảnh
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
-            
-            // Tăng độ tương phản và làm sắc nét
-            for (let i = 0; i < data.length; i += 4) {
-                // Chuyển đổi sang grayscale
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                
-                // Tăng độ tương phản
-                const contrast = 1.5;
-                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-                const newValue = factor * (avg - 128) + 128;
-                
-                // Áp dụng ngưỡng để làm rõ văn bản
-                const threshold = 128;
-                const finalValue = newValue > threshold ? 255 : 0;
-                
-                data[i] = data[i + 1] = data[i + 2] = finalValue;
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            // Chuyển đổi canvas thành Data URL với chất lượng cao
-            const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
-            
-            // Thực hiện OCR với ảnh đã xử lý
-            Tesseract.recognize(
-                processedImageDataUrl,
-                'vie',
-                {
-                    logger: m => console.log(m),
-                    tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ',
-                    tessedit_pageseg_mode: '6', // Page segmentation mode: Assume a single uniform block of text.
-                    preserve_interword_spaces: '1',
-                    tessedit_ocr_engine_mode: '1', // Sử dụng LSTM OCR Engine Mode
-                    tessjs_create_pdf: '0',
-                    tessjs_create_hocr: '0',
-                    tessjs_create_tsv: '0',
-                    tessjs_create_box: '0',
-                    tessjs_create_unlv: '0',
-                    tessjs_create_osd: '0'
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Lấy dữ liệu ảnh
+                let imageData = ctx.getImageData(0, 0, width, height);
+                let data = imageData.data;
+
+                // 1. Chuyển sang grayscale
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = data[i + 1] = data[i + 2] = avg;
                 }
-            ).then(({ data }) => {
-                console.log('Dữ liệu nhận dạng được:', data);
-                
-                let recognizedText = '';
-                if (data && data.text) {
-                    recognizedText = data.text.trim();
+
+                // 2. Tăng tương phản mạnh hơn nữa
+                const contrast = 4.0; // tăng giá trị này nếu cần
+                const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+                for (let i = 0; i < data.length; i += 4) {
+                    let v = data[i];
+                    v = factor * (v - 128) + 128;
+                    v = Math.max(0, Math.min(255, v));
+                    data[i] = data[i + 1] = data[i + 2] = v;
                 }
-                
-                console.log('Văn bản nhận dạng được (raw text):', recognizedText);
-                showNotification('Đã nhận dạng văn bản từ ảnh');
-                resolve(recognizedText); // Trả về văn bản
-                
-            }).catch(err => {
-                console.error('Lỗi OCR:', err);
-                showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
-                reject(err);
-            });
-        };
-        
-        img.onerror = function() {
-            console.error('Lỗi khi tải ảnh');
-            showNotification('Không thể tải ảnh để xử lý.', 'error');
-            reject(new Error('Could not load image'));
-        };
-        
-        // Bắt đầu tải ảnh gốc
-        img.src = imageDataUrl;
-    });
+
+                // 3. Binarization (ngưỡng trắng đen)
+                const threshold = 125; // giảm xuống cho chữ mảnh, nền sáng
+                for (let i = 0; i < data.length; i += 4) {
+                    const value = data[i] > threshold ? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = value;
+                }
+
+                // 4. Làm sắc nét nhẹ (sharpen)
+                function sharpen(imageData, width, height) {
+                    const weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+                    const side = Math.round(Math.sqrt(weights.length));
+                    const halfSide = Math.floor(side / 2);
+                    const src = imageData.data.slice();
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            let r = 0, g = 0, b = 0;
+                            for (let cy = 0; cy < side; cy++) {
+                                for (let cx = 0; cx < side; cx++) {
+                                    const scy = y + cy - halfSide;
+                                    const scx = x + cx - halfSide;
+                                    if (scy >= 0 && scy < height && scx >= 0 && scx < width) {
+                                        const srcOffset = (scy * width + scx) * 4;
+                                        const wt = weights[cy * side + cx];
+                                        r += src[srcOffset] * wt;
+                                        g += src[srcOffset + 1] * wt;
+                                        b += src[srcOffset + 2] * wt;
+                                    }
+                                }
+                            }
+                            const dstOffset = (y * width + x) * 4;
+                            data[dstOffset] = Math.min(255, Math.max(0, r));
+                            data[dstOffset + 1] = Math.min(255, Math.max(0, g));
+                            data[dstOffset + 2] = Math.min(255, Math.max(0, b));
+                        }
+                    }
+                }
+                sharpen(imageData, width, height);
+
+                ctx.putImageData(imageData, 0, 0);
+
+                const processedImageDataUrl = canvas.toDataURL('image/jpeg', 1.0);
+
+                // Thực hiện OCR với ảnh đã xử lý
+                Tesseract.recognize(
+                    processedImageDataUrl,
+                    'vie',
+                    {
+                        logger: m => console.log(m),
+                        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ.,:-/ ',
+                        preserve_interword_spaces: '1'
+                    }
+                ).then(({ data }) => {
+                    let recognizedText = '';
+                    if (data && data.text) {
+                        recognizedText = data.text.trim();
+                    }
+                    showNotification('Đã nhận dạng văn bản từ ảnh');
+                    resolve(recognizedText);
+                }).catch(err => {
+                    showNotification('Lỗi khi nhận dạng văn bản từ ảnh.', 'error');
+                    reject(err);
+                });
+            };
+
+            img.onerror = function() {
+                showNotification('Không thể tải ảnh để xử lý.', 'error');
+                reject(new Error('Could not load image'));
+            };
+
+            img.src = imageDataUrl;
+        });
+    } catch (e) {
+        text = '';
+    }
+    // Nếu kết quả quá ngắn, thử lại bằng OCR.Space
+    if (!text || text.length < 5) {
+        text = await ocrSpaceRecognize(imageDataUrl);
+    }
+    return text;
 }
 
 // Hàm kiểm tra trình duyệt
@@ -1070,7 +1093,7 @@ async function handleSearchInputPaste(e) {
         reader.onload = async function(e) {
             const imageDataUrl = e.target.result;
             try {
-                // Gọi hàm xử lý OCR và nhận văn bản trả về
+                // Xử lý ảnh đầu vào giống như nút chụp ảnh/chọn ảnh
                 const recognizedText = await processImageForOCR(imageDataUrl);
                 // Thay thế các ký tự xuống dòng bằng khoảng trắng và trim
                 const cleanedText = recognizedText.replace(/[\r\n]+/g, ' ').trim();
@@ -1093,19 +1116,48 @@ async function handleSearchInputPaste(e) {
     } else {
         console.log('No image found, processing as text paste');
         // Nếu không phải ảnh, xử lý paste văn bản bình thường
-        // Lấy văn bản, thay thế xuống dòng bằng khoảng trắng và trim
         const pastedText = (e.clipboardData || window.clipboardData).getData('text');
         const cleanedText = pastedText.replace(/[\r\n]+/g, ' ').trim();
 
-        // Cho phép hành vi paste mặc định để chèn văn bản đã làm sạch
-        // hoặc chèn thủ công nếu cần kiểm soát chính xác vị trí con trỏ
-        
-        // Tạm thời bỏ preventDefault() ở đây để xem paste mặc định có hoạt động không
-        // e.preventDefault(); 
+        e.preventDefault(); // THÊM DÒNG NÀY để ngăn hành vi paste mặc định
+
         e.target.value = cleanedText; // Ghi đè giá trị input
         console.log('Pasted text:', cleanedText);
 
         // Tự động gọi tìm kiếm sau khi paste văn bản
         searchExcelData(cleanedText);
+    }
+}
+async function ocrSpaceRecognize(imageDataUrl) {
+    showNotification('Đang gửi ảnh lên OCR.Space...');
+    const apiKey = 'helloworld'; // API key miễn phí mặc định của OCR.Space
+
+    // OCR.Space chỉ nhận base64 không có tiền tố "data:image/jpeg;base64,"
+    const base64Image = imageDataUrl.replace(/^data:image\/(png|jpeg);base64,/, '');
+
+    const formData = new FormData();
+    formData.append('base64Image', 'data:image/jpeg;base64,' + base64Image);
+    formData.append('language', 'vie');
+    formData.append('isOverlayRequired', 'false');
+
+    try {
+        const response = await fetch('https://api.ocr.space/parse/image', {
+            method: 'POST',
+            headers: {
+                apikey: apiKey
+            },
+            body: formData
+        });
+        const result = await response.json();
+        if (result.IsErroredOnProcessing) {
+            showNotification('OCR.Space lỗi: ' + result.ErrorMessage, 'error');
+            return '';
+        }
+        const text = result.ParsedResults && result.ParsedResults[0] ? result.ParsedResults[0].ParsedText : '';
+        showNotification('Đã nhận dạng văn bản từ ảnh (OCR.Space)');
+        return text.trim();
+    } catch (error) {
+        showNotification('Lỗi khi gửi ảnh lên OCR.Space.', 'error');
+        return '';
     }
 }
