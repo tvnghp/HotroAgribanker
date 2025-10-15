@@ -91,6 +91,67 @@ body, html {
     width: 100%;
     gap: var(--spacing-md);
     margin-top: var(--spacing-xs);
+    position: relative;
+}
+
+/* Main controls (always visible on desktop) */
+#main-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    width: 100%;
+}
+
+/* Menu toggle (hamburger menu) - hidden on desktop */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    position: absolute;
+    top: -35px;
+    right: 10px;
+    z-index: 10;
+}
+
+.menu-toggle span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--primary);
+    margin: 3px 0;
+    transition: var(--transition-default);
+    border-radius: 2px;
+}
+
+.menu-toggle.active span:nth-child(1) {
+    transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+    transform: rotate(45deg) translate(-5px, -6px);
+}
+
+/* Advanced menu (hidden by default) */
+.advanced-menu {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background-color: var(--bg-light);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.advanced-menu.active {
+    display: flex;
 }
 
 /* File selection */
@@ -331,8 +392,8 @@ button:hover {
     }
     
     #agribank-logo-container {
-        width: 100px;
-        margin-bottom: var(--spacing-sm);
+        width: 80px;
+        margin-bottom: var(--spacing-xs);
     }
     
     #header-text {
@@ -341,11 +402,12 @@ button:hover {
     }
     
     #header-text h1 {
-        font-size: 18px;
+        font-size: 16px;
+        line-height: 1.1;
     }
     
     #header-text h2 {
-        font-size: 16px;
+        font-size: 14px;
         margin-bottom: var(--spacing-xs);
     }
     
@@ -355,18 +417,79 @@ button:hover {
         margin-top: var(--spacing-xs);
     }
     
-    #file-selection, #controls {
-        width: 100%;
-        justify-content: center;
+    /* Hiển thị menu hamburger trên mobile */
+    .menu-toggle {
+        display: flex;
     }
     
-    #fileName {
+    /* Ẩn các nút không cần thiết trên mobile */
+    #file-selection,
+    #image-selection,
+    #capture-selection {
+        display: none;
+    }
+    
+    /* Chỉ hiển thị các nút chính */
+    #main-controls {
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+    
+    /* Buttons chính nhỏ hơn trên mobile */
+    #controls {
+        gap: var(--spacing-sm);
+    }
+    
+    #controls button {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 60px;
+    }
+    
+    /* Advanced menu styles cho mobile */
+    .advanced-menu {
+        background-color: var(--bg-white);
+        border: 1px solid var(--border-light);
+    }
+    
+    /* Styles cho các nút trong advanced menu */
+    #mobile-file-selection,
+    #mobile-image-selection,
+    #mobile-capture-selection {
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    
+    #mobile-file-selection label,
+    #mobile-image-selection label,
+    #mobile-capture-selection label {
+        padding: 8px 12px;
+        font-size: 13px;
+        margin-right: var(--spacing-sm);
+    }
+    
+    #mobileFileName,
+    #mobileImageName,
+    #mobileCaptureName {
+        font-size: 12px;
+        padding: 6px 10px;
         max-width: 120px;
     }
     
     #resultArea {
-        max-height: calc(100vh - 280px);
+        max-height: calc(100vh - 180px);
         padding: var(--spacing-md);
+        margin: var(--spacing-sm) auto;
+    }
+    
+    /* Search input nhỏ hơn */
+    #searchInput {
+        margin: var(--spacing-sm) auto 0;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 14px;
     }
 }
 

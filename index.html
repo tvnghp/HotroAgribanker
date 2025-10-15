@@ -14,30 +14,62 @@
         <div id="header-text">
             <h1>AGRIBANK CHI NHÁNH CẦN THƠ II</h1>
             <div id="controls-container">
-                <div id="file-selection">
-                    <input type="file" id="fileInput" accept=".xlsx, .xls">
-                    <label for="fileInput">Chọn File Excel</label>
-                    <span id="fileName">data.xlsx</span>
+                <!-- Menu hamburger cho mobile -->
+                <div id="menu-toggle" class="menu-toggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
+                
+                <div id="main-controls">
+                    <div id="file-selection">
+                        <input type="file" id="fileInput" accept=".xlsx, .xls">
+                        <label for="fileInput">Chọn File Excel</label>
+                        <span id="fileName">data.xlsx</span>
+                    </div>
+            
+                    <div id="image-selection">
+                        <input type="file" id="imageInput" accept="image/*">
+                        <label for="imageInput">Chọn Ảnh OCR</label>
+                        <span id="imageName">Chưa có ảnh</span>
+                    </div>
         
-                <div id="image-selection">
-                    <input type="file" id="imageInput" accept="image/*">
-                    <label for="imageInput">Chọn Ảnh OCR</label>
-                    <span id="imageName">Chưa có ảnh</span>
-                </div>
+                    <div id="capture-selection">
+                        <div class="input-group">
+                            <label for="captureInput" class="input-label">Chụp ảnh:</label>
+                            <input type="file" id="captureInput" accept="image/*" capture="environment" class="file-input">
+                            <span id="captureName" class="file-name">Chưa chụp</span>
+                        </div>
+                    </div>
         
-                <div id="capture-selection" style="margin-left: 10px;">
-                    <div class="input-group">
-                        <label for="captureInput" class="input-label">Chụp ảnh:</label>
-                        <input type="file" id="captureInput" accept="image/*" capture="environment" class="file-input">
-                        <span id="captureName" class="file-name">Chưa chụp</span>
+                    <div id="controls">
+                        <button id="startListeningButton">Bắt Đầu Nói</button>
+                        <button id="searchButton">Tìm Kiếm</button>
+                        <button id="clearResultsButton">Xóa Kết Quả</button>
                     </div>
                 </div>
-        
-                <div id="controls">
-                    <button id="startListeningButton">Bắt Đầu Nói</button>
-                    <button id="searchButton">Tìm Kiếm</button>
-                    <button id="clearResultsButton">Xóa Kết Quả</button>
+                
+                <!-- Advanced menu cho mobile (chứa các chức năng ẩn) -->
+                <div id="advanced-menu" class="advanced-menu">
+                    <div id="mobile-file-selection">
+                        <input type="file" id="mobileFileInput" accept=".xlsx, .xls">
+                        <label for="mobileFileInput">Chọn File Excel</label>
+                        <span id="mobileFileName">data.xlsx</span>
+                    </div>
+                    
+                    <div id="mobile-image-selection">
+                        <input type="file" id="mobileImageInput" accept="image/*">
+                        <label for="mobileImageInput">Chọn Ảnh OCR</label>
+                        <span id="mobileImageName">Chưa có ảnh</span>
+                    </div>
+            
+                    <div id="mobile-capture-selection">
+                        <div class="input-group">
+                            <label for="mobileCaptureInput" class="input-label">Chụp ảnh:</label>
+                            <input type="file" id="mobileCaptureInput" accept="image/*" capture="environment" class="file-input">
+                            <span id="mobileCaptureName" class="file-name">Chưa chụp</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
