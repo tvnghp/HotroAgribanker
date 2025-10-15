@@ -40,8 +40,9 @@ body, html {
 /* Header styling */
 #header-container {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between; /* Thêm dòng này */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--bg-white);
     box-shadow: var(--shadow-sm);
@@ -50,7 +51,7 @@ body, html {
 #agribank-logo-container {
     flex-shrink: 0;
     width: 120px;
-    margin-right: 32px; /* Tạo khoảng cách với phần controls */
+    margin: 0 auto; /* Canh giữa logo */
 }
 
 #agribank-logo {
