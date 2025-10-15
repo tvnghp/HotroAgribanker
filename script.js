@@ -22,6 +22,13 @@ function initSpeechRecognition() {
         recognition.continuous = true; // Tiếp tục lắng nghe
         recognition.maxAlternatives = 1;
         
+        // Thêm event listener cho khi bắt đầu
+        recognition.onstart = () => {
+            console.log('Đã bắt đầu nhận diện giọng nói');
+            document.getElementById('startListeningButton').textContent = 'Đang lắng nghe...';
+            document.getElementById('startListeningButton').style.backgroundColor = '#4a9b4a';
+        };
+        
         // Biến để lưu kết quả cuối cùng
         let finalTranscript = '';
         
@@ -93,15 +100,41 @@ function initSpeechRecognition() {
 
         recognition.onerror = (event) => {
             console.error('Lỗi trong quá trình nhận diện:', event.error);
-            // Chỉ reset nút khi có lỗi nghiêm trọng
-            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                showNotification('Không có quyền truy cập microphone. Vui lòng cho phép quyền này.', 'error');
-                resetListeningButton();
-            } else if (event.error === 'no-speech') {
-                console.log('Không phát hiện giọng nói, tiếp tục lắng nghe...');
-                // Không reset nút, tiếp tục lắng nghe
-            } else {
-                resetListeningButton();
+            
+            // Xử lý từng loại lỗi cụ thể
+            switch(event.error) {
+                case 'not-allowed':
+                    showNotification('Quyền truy cập microphone bị từ chối. Vui lòng cho phép quyền này trong cài đặt trình duyệt.', 'error');
+                    resetListeningButton();
+                    break;
+                case 'service-not-allowed':
+                    showNotification('Dịch vụ nhận diện giọng nói không được phép. Vui lòng kiểm tra cài đặt.', 'error');
+                    resetListeningButton();
+                    break;
+                case 'no-speech':
+                    console.log('Không phát hiện giọng nói, tiếp tục lắng nghe...');
+                    // Không reset nút, tiếp tục lắng nghe
+                    break;
+                case 'audio-capture':
+                    showNotification('Không thể truy cập microphone. Vui lòng kiểm tra thiết bị.', 'error');
+                    resetListeningButton();
+                    break;
+                case 'network':
+                    showNotification('Lỗi mạng. Vui lòng kiểm tra kết nối internet.', 'error');
+                    resetListeningButton();
+                    break;
+                case 'aborted':
+                    console.log('Nhận diện giọng nói đã bị hủy');
+                    resetListeningButton();
+                    break;
+                case 'language-not-supported':
+                    showNotification('Ngôn ngữ không được hỗ trợ.', 'error');
+                    resetListeningButton();
+                    break;
+                default:
+                    console.log('Lỗi không xác định:', event.error);
+                    resetListeningButton();
+                    break;
             }
         };
         
@@ -109,19 +142,81 @@ function initSpeechRecognition() {
             console.log('Kết thúc nhận diện giọng nói');
             resetListeningButton();
         };
+        
+        recognition.onspeechstart = () => {
+            console.log('Phát hiện giọng nói');
+        };
+        
+        recognition.onspeechend = () => {
+            console.log('Kết thúc phát hiện giọng nói');
+        };
+        
+        recognition.onsoundstart = () => {
+            console.log('Phát hiện âm thanh');
+        };
+        
+        recognition.onsoundend = () => {
+            console.log('Kết thúc phát hiện âm thanh');
+        };
     } else {
         showNotification('Trình duyệt của bạn không hỗ trợ nhận diện giọng nói', 'error');
         document.getElementById('startListeningButton').disabled = true;
     }
 }
 
+// Hàm thử nghiệm microphone trước khi bắt đầu nhận diện
+function testMicrophoneAccess() {
+    return new Promise((resolve) => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            resolve(false);
+            return;
+        }
+        
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                // Nếu thành công, dừng stream ngay lập tức
+                stream.getTracks().forEach(track => track.stop());
+                resolve(true);
+            })
+            .catch(error => {
+                console.log('Lỗi truy cập microphone:', error);
+                resolve(false);
+            });
+    });
+}
+
+// Hàm kiểm tra quyền microphone
+async function checkMicrophonePermission() {
+    try {
+        // Kiểm tra API getUserMedia
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Nếu thành công, dừng stream ngay lập tức
+            stream.getTracks().forEach(track => track.stop());
+            console.log('Quyền microphone đã được cấp');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Lỗi kiểm tra quyền microphone:', error);
+        return false;
+    }
+}
+
 // Hàm để khởi động nhận diện giọng nói
-function startListening() {
+async function startListening() {
     if (!recognition) {
         initSpeechRecognition();
     }
     
     try {
+        // Kiểm tra quyền microphone trước
+        const hasPermission = await testMicrophoneAccess();
+        if (!hasPermission) {
+            showNotification('Vui lòng cho phép quyền truy cập microphone để sử dụng tính năng nhận diện giọng nói.', 'warning');
+            return;
+        }
+        
         // Kiểm tra nếu đang lắng nghe thì dừng lại
         if (recognition.state && recognition.state === 'listening') {
             recognition.stop();
@@ -130,9 +225,6 @@ function startListening() {
         }
         
         recognition.start();
-        // Cập nhật giao diện nút
-        document.getElementById('startListeningButton').textContent = 'Đang lắng nghe...';
-        document.getElementById('startListeningButton').style.backgroundColor = '#4a9b4a';
         
         // Hiển thị hướng dẫn lệnh giọng nói
         showVoiceCommands();
@@ -146,8 +238,6 @@ function startListening() {
                 recognition.stop();
                 setTimeout(() => {
                     recognition.start();
-                    document.getElementById('startListeningButton').textContent = 'Đang lắng nghe...';
-                    document.getElementById('startListeningButton').style.backgroundColor = '#4a9b4a';
                     showVoiceCommands();
                 }, 100);
             } catch (retryError) {
@@ -155,6 +245,7 @@ function startListening() {
                 resetListeningButton();
             }
         } else {
+            showNotification('Không thể bắt đầu nhận diện giọng nói. Vui lòng thử lại.', 'error');
             resetListeningButton();
         }
     }
