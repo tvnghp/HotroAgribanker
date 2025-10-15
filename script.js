@@ -1105,13 +1105,20 @@ async function cropImage() {
     }
 }
 
-// Hàm toggle menu hamburger
+// Hàm toggle menu chức năng
 function toggleAdvancedMenu() {
-    const menuToggle = document.getElementById('menu-toggle');
+    const toggleBtn = document.getElementById('toggleMenuBtn');
     const advancedMenu = document.getElementById('advanced-menu');
     
-    menuToggle.classList.toggle('active');
+    toggleBtn.classList.toggle('active');
     advancedMenu.classList.toggle('active');
+    
+    // Thay đổi icon khi mở/đóng
+    if (advancedMenu.classList.contains('active')) {
+        toggleBtn.innerHTML = '✕';
+    } else {
+        toggleBtn.innerHTML = '⚙️';
+    }
 }
 
 // Hàm đồng bộ file selection giữa desktop và mobile
@@ -1228,8 +1235,8 @@ window.onload = () => {
         }
     };
     
-    // Đăng ký sự kiện cho menu toggle
-    document.getElementById('menu-toggle').addEventListener('click', toggleAdvancedMenu);
+    // Đăng ký sự kiện cho nút toggle menu
+    document.getElementById('toggleMenuBtn').addEventListener('click', toggleAdvancedMenu);
 };
 
 function displayResults(data) {

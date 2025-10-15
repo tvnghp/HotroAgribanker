@@ -104,37 +104,40 @@ body, html {
     width: 100%;
 }
 
-/* Menu toggle (hamburger menu) - hidden on desktop */
+/* Menu toggle (nút chức năng) - hidden on desktop */
 .menu-toggle {
     display: none;
-    flex-direction: column;
-    cursor: pointer;
-    padding: var(--spacing-xs);
     position: absolute;
-    top: 10px;
+    top: 50%;
     right: 10px;
+    transform: translateY(-50%);
     z-index: 10;
 }
 
-.menu-toggle span {
-    width: 25px;
-    height: 3px;
+.toggle-menu-btn {
     background-color: var(--primary);
-    margin: 3px 0;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
     transition: var(--transition-default);
-    border-radius: 2px;
 }
 
-.menu-toggle.active span:nth-child(1) {
-    transform: rotate(-45deg) translate(-5px, 6px);
+.toggle-menu-btn:hover {
+    background-color: var(--primary-dark);
+    transform: scale(1.1);
 }
 
-.menu-toggle.active span:nth-child(2) {
-    opacity: 0;
-}
-
-.menu-toggle.active span:nth-child(3) {
-    transform: rotate(45deg) translate(-5px, -6px);
+.toggle-menu-btn.active {
+    background-color: var(--primary-light);
+    transform: rotate(180deg);
 }
 
 /* Advanced menu (hidden by default) */
@@ -417,16 +420,23 @@ button:hover {
         margin-top: var(--spacing-xs);
     }
     
-    /* Hiển thị menu hamburger trên mobile */
+    /* Hiển thị nút chức năng trên mobile */
     .menu-toggle {
-        display: flex;
-        top: 5px;
+        display: block;
+        top: 50%;
         right: 5px;
+        transform: translateY(-50%);
+    }
+    
+    .toggle-menu-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
     }
     
     /* Đảm bảo tiêu đề không bị chồng lên */
     #header-text h1 {
-        padding-right: 50px; /* Tạo khoảng trống cho hamburger */
+        padding-right: 50px; /* Tạo khoảng trống cho nút */
     }
     
     /* Ẩn các nút không cần thiết trên mobile */
