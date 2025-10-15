@@ -64,6 +64,7 @@ body, html {
     flex-direction: column;
     align-items: center;
     padding-right: 0px;
+    text-align: center;
 }
 
 #header-text h1, #header-text h2 {
@@ -432,9 +433,11 @@ button:hover {
         font-size: 16px;
     }
     
-    /* Đảm bảo tiêu đề không bị chồng lên */
+    /* Đảm bảo tiêu đề canh giữa và không bị chồng lên */
     #header-text h1 {
-        padding-right: 50px; /* Tạo khoảng trống cho nút */
+        text-align: center;
+        padding-right: 0;
+        width: 100%;
     }
     
     /* Ẩn các nút không cần thiết trên mobile */
